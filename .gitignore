@@ -1,0 +1,6 @@
+.DS_Store
+*.pdf
+build/*.o
+build/*.mod
+build/CMake*
+build/Makefile
