@@ -1,0 +1,10 @@
+&gamil_init_config
+model_grid_type                     = 2
+num_model_lon                       = 128
+num_model_lat                       = 65
+uvtq_data_file                      = "../data/2006-01-01-00000.nc"
+uvtq_data_type                      = 1
+ozone_data_file                     = "N/A"
+topo_data_file                      = "../data/topo.2min.nc"
+aero_data_file                      = "N/A"
+/

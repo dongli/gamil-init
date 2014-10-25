@@ -148,7 +148,9 @@ subroutine calc_model_grids(NX, NY)
     !       but we should use more elegant way to set them.
     call report_warning(sub_name, "Read vertical sigma coordinates from file!")
 
-    ierr = nf90_open("../grids/hybpara.26.nc", nf90_nowrite, ncid)
+    call check_file_exist(sub_name, "./hybpara.26.nc")
+
+    ierr = nf90_open("./hybpara.26.nc", nf90_nowrite, ncid)
     call handle_netcdf_error(sub_name, __LINE__, ierr)
 
     ierr = nf90_inq_dimid(ncid, "lev", dim_id)

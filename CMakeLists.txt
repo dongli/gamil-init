@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 2.8)
 
-project (gamil_init Fortran)
+project (gamil-init Fortran)
 
 list (APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
 find_package (NETCDF REQUIRED COMPONENTS Fortran)
@@ -25,5 +25,5 @@ include_directories (
     "${PROJECT_SOURCE_DIR}/src"
 )
 
-add_executable (gamil_init ${sources})
-target_link_libraries (gamil_init ${NETCDF_LIBRARIES})
+add_executable (gamil-init ${sources})
+target_link_libraries (gamil-init ${NETCDF_LIBRARIES})
