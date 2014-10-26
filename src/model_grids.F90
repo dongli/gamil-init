@@ -141,6 +141,10 @@ contains
         integer i
         class(var), pointer :: ptr
 
+        ! Set lev and ilev from the equivalent hybrid coefficients.
+        model_lev = model_hybm
+        model_lev_bnds = model_hybi
+
         ptr => model_dims%get_head()
         do i = 1, model_dims%get_num_var()
             call io_manager_add_dim(file_idx, ptr)
