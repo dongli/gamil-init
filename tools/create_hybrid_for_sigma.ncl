@@ -27,14 +27,15 @@ begin
 
     pt = 2.194
 
-    hyam = sigm
-    hybm = 1-sigm
+    hyam = 1-sigm
+    hybm = sigm
 
-    hyai = sigi
-    hybi = 1-sigi
+    hyai = 1-sigi
+    hybi = sigi
 
     P0 = pt
 
+    system("rm -rf hybpara.26.nc")
     f = addfile("hybpara.26.nc", "c")
 
     setfileoption(f, "DefineMode", True)

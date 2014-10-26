@@ -1,7 +1,7 @@
 &gamil_init_config
 model_grid_type                     = 2
 num_model_lon                       = 128
-num_model_lat                       = 65
+num_model_lat                       = 64
 uvtq_data_file                      = "../data/2006-01-01-00000.nc"
 uvtq_data_type                      = 1
 ozone_data_file                     = "N/A"

@@ -27,24 +27,24 @@ begin
     do i = 1, 4
         var_name = "TS"+i
         filevardef(f2, var_name, typeof(f1->$var_name$), (/"time","lat","lon"/))
-        f2->$var_name$ = linint2(lon1, lat1, f1->$var_name$, True, lon2, lat2, 0)
+        f2->$var_name$ = linint2_Wrap(lon1, lat1, f1->$var_name$, True, lon2, lat2, 0)
         f2->$var_name$@comments = "This variable is copied from old dataset!"
         system("echo [Notice]: Variable "+var_name+" has been copied.")
     end do
 
     filevardef(f2, "SNOWHICE", typeof(f1->SNOWHICE), (/"time","lat","lon"/))
-    f2->SNOWHICE = linint2(lon1, lat1, f1->SNOWHICE, True, lon2, lat2, 0)
+    f2->SNOWHICE = linint2_Wrap(lon1, lat1, f1->SNOWHICE, True, lon2, lat2, 0)
     f2->SNOWHICE@comments = "This variable is copied from old dataset!"
     system("echo [Notice]: Variable SNOWHICE has been copied.")
 
     filevardef(f2, "TSICE", typeof(f1->TSICE), (/"time","lat","lon"/))
-    f2->TSICE = linint2(lon1, lat1, f1->TSICE, True, lon2, lat2, 0)
+    f2->TSICE = linint2_Wrap(lon1, lat1, f1->TSICE, True, lon2, lat2, 0)
     f2->TSICE@comments = "This variable is copied from old dataset!"
     system("echo [Notice]: Variable TSICE has been copied.")
 
     filevardef(f2, "CWAT", typeof(f1->CWAT), (/"time","lat","lev","lon"/))
     do k = 0, dimsizes(f1->lev)-1
-        f2->CWAT(:,:,k,:) = linint2(lon1, lat1, f1->CWAT(:,:,k,:), True, lon2, lat2, 0)
+        f2->CWAT(:,:,k,:) = linint2_Wrap(lon1, lat1, f1->CWAT(:,:,k,:), True, lon2, lat2, 0)
     end do
     f2->CWAT@comments = "This variable is copied from old dataset!"
     system("echo [Notice]: Variable CWAT has been copied.")
