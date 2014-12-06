@@ -1,10 +1,8 @@
-program regrid
+subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
 !----------------------------------------------------------------------------------
 !
 ! Purpose: Area average or linearly interpolate 1x1 degree SST and sea ice concentration
 !          data to grid defined by output file.  
-!
-! Usage: regrid [-a] [-b begin] [-e end] -g gridfile -i icefile [-l] -o outfile -s sstfile [-v]
 !
 !----------------------------------------------------------------------------------
    use precision
@@ -15,12 +13,11 @@ program regrid
 !
 ! Local workspace
 !
-   character(len=256) :: sstfilein =  ' '    ! filename for 1x1 input SST data
-   character(len=256) :: icefilein =  ' '    ! filename for 1x1 input ICE data
-   character(len=256) :: gridout = ' '       ! filename for output grid coordinates
-   character(len=256) :: fileout = ' '       ! filename for regridded output data
-   character(len=256) :: arg                 ! cmd line argument
-   character(len=512) :: cmdline             ! input command line
+   character(*), intent(in) :: sstfilein ! filename for 1x1 input SST data
+   character(*), intent(in) :: icefilein ! filename for 1x1 input ICE data
+   character(*), intent(in) :: gridout   ! filename for output grid coordinates
+   character(*), intent(in) :: fileout   ! filename for regridded output data
+
    character(len=23)  :: scattername         ! file name for scatter plot
    character(len=19)  :: cur_timestamp
    character(len=600) :: history             ! history attribute
@@ -33,7 +30,6 @@ program regrid
    logical :: usr_specified_interp = .false. ! Whether cmd-line interp type specified
    logical :: scatterplots = .false.    ! Turn on for scatter plots
 
-   integer :: cmdlen, hislen, totlen    ! character array lengths
    integer :: date(1)                   ! array to please lf95
    integer :: datesec(1)                ! array to please lf95
    integer :: mo                        ! month index
@@ -170,86 +166,6 @@ program regrid
    integer :: monlen(12)                  ! length of months
    data monlen/31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/
 !
-! Cmd line
-!
-   integer iargc
-   external iargc
-
-! parse command line arguments, saving them to be written to history attribute
-
-   nargs = command_argument_count ()
-   n = 1
-   cmdline = 'regrid '
-   do while (n <= nargs)
-      arg = ' '
-      call get_command_argument (n, arg)
-      n = n + 1
-      select case (arg)
-      case ('-a')
-         linear_interp = .false.
-         usr_specified_interp = .true.
-         cmdline = trim(cmdline) // ' -a'
-      case ('-b')
-         call get_command_argument (n, arg)
-         n = n + 1
-         begindate = arg
-         read (begindate,'(i8)') bdate
-         cmdline = trim(cmdline) // ' -b ' // trim(begindate)
-      case ('-e')
-         call get_command_argument (n, arg)
-         n = n + 1
-         enddate = arg
-         read (enddate,'(i8)') edate
-         cmdline = trim(cmdline) // ' -e ' // trim(enddate)
-      case ('-g')
-         call get_command_argument (n, arg)
-         n = n + 1
-         gridout = arg
-         cmdline = trim(cmdline) // ' -g ' // trim(gridout)
-      case ('-i')
-         call get_command_argument (n, arg)
-         n = n + 1
-         icefilein = arg
-         cmdline = trim(cmdline) // ' -i ' // trim(icefilein)
-      case ('-l')
-         linear_interp = .true.
-         usr_specified_interp = .true.
-         cmdline = trim(cmdline) // ' -l'
-      case ('-o')
-         call get_command_argument (n, arg)
-         n = n + 1
-         fileout = arg
-         cmdline = trim(cmdline) // ' -o ' // trim(fileout)
-      case ('-s')
-         call get_command_argument (n, arg)
-         n = n + 1
-         sstfilein = arg
-         cmdline = trim(cmdline) // ' -s ' // trim(sstfilein)
-      case ('-v')
-         verbose = .true.
-         cmdline = trim(cmdline) // ' -v'
-      case default
-         write (6,*) 'Argument ', arg,' is not known'
-         call usage_exit (' ')
-      end select
-   end do
-
-   if (sstfilein == ' ') then
-      call usage_exit ('No input SST file specified')
-   end if
-
-   if (icefilein == ' ') then
-      call usage_exit ('No input ICE file specified')
-   end if
-
-   if (gridout == ' ') then
-      call usage_exit ('No grid file specified')
-   end if
-
-   if (fileout == ' ') then
-      call usage_exit ('No output file specified')
-   end if
-!
 ! Open 1x1 netcdf files for reading and get dimension info
 !
    call wrap_nf_open (trim(sstfilein), nf_nowrite, ncidsstin)
@@ -374,9 +290,8 @@ program regrid
 ! Define history attribute.
 !
    call get_curr_timestamp(cur_timestamp)
-   history = trim(cur_timestamp) // ' ' // trim(cmdline)
-   cmdlen = len_trim (history)
-   call wrap_nf_put_att_text (ncidout, NF_GLOBAL, 'history', cmdlen, trim(history))
+   history = trim(cur_timestamp)
+   call wrap_nf_put_att_text (ncidout, NF_GLOBAL, 'history', trim(history))
 !
 ! Define SST on the output file
 !
@@ -409,7 +324,7 @@ program regrid
    call wrap_nf_put_att_real (ncidout, sstidout, '_FillValue', NF_FLOAT, 1, fillvalueout)
 
    call wrap_nf_copy_att (ncidicein, iceidin, 'long_name', ncidout, iceidout)
-   call wrap_nf_put_att_text (ncidout, iceidout, 'units', len('1'), '1')
+   call wrap_nf_put_att_text (ncidout, iceidout, 'units', '1')
    call wrap_nf_put_att_real (ncidout, iceidout, '_FillValue', NF_FLOAT, 1, fillvalueout)
 
 !
@@ -463,7 +378,7 @@ program regrid
 !
    if (linear_interp) then
       write(6,*)'Using LINEAR interpolation to output grid'
-      call wrap_nf_put_att_text (ncidout, NF_GLOBAL, 'interp_type', 6, 'LINEAR')
+      call wrap_nf_put_att_text (ncidout, NF_GLOBAL, 'interp_type', 'LINEAR')
       allocate (lonin2d(plonin,nlatin))
 !
 ! ASSUME input grid is regular (not reduced)
@@ -477,7 +392,7 @@ program regrid
 ! from lat vals. on input .nc file because they might not be uniformly spaced (e.g. Gaussian)
 !
       write(6,*)'Using AREA AVERAGING to output grid'
-      call wrap_nf_put_att_text (ncidout, NF_GLOBAL, 'interp_type', 14, 'AREA AVERAGING')
+      call wrap_nf_put_att_text (ncidout, NF_GLOBAL, 'interp_type', 'AREA AVERAGING')
 
       allocate (loninwe(plonin+1,nlatin))
       allocate (lonoutwe(plonout+1,nlatout))
@@ -742,32 +657,4 @@ program regrid
       close (unit=1)
    end if
 
-   stop
-end program regrid
-
-subroutine usage_exit (arg)
-   implicit none
-   character*(*) arg
-   
-   if (arg /= ' ') write (6,*) arg
-   write (6,*) 'Usage: regrid [-a] [-b begin] [-e end] -g gridfile -i icefile [-l] -o outfile -s sstfile [-v]'
-   write (6,*) '  -a: Use area averaging (not linear interpolation). default if fine->coarse'
-   write (6,*) '  -b date: (yyyymmdd) skip input dates earlier than this. default: start at the beginning'
-   write (6,*) '  -e date: (yyyymmdd) skip input dates later than this. default: end at the end'
-   write (6,*) '  -g file: input netcdf file containing grid for output fields'
-   write (6,*) '  -i file: 1x1 input netcdf ICE concentration file'
-   write (6,*) '  -l: Use linear interpolation (not area averaging). default if coarse->fine'
-   write (6,*) '  -o file: output netcdf file with regridded SST and ICE'
-   write (6,*) '  -s file: 1x1 input netcdf SST file'
-   write (6,*) '  -v: verbose mode'
-   stop 999
-end subroutine usage_exit
-
-subroutine get_curr_timestamp(time)
-! return timestamp formatted as "YYYY-MM-DD HH:MM:SS"   
-   character(len=19), intent(out) :: time
-   integer :: t(8)
-   call date_and_time(values=t)
-   write(time,'(i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') t(1),'-',t(2),'-',t(3),' ',&
-                                                         t(5),':',t(6),':',t(7)
-end subroutine get_curr_timestamp
+end subroutine pcmdi_regrid

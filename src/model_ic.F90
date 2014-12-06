@@ -17,6 +17,7 @@ module model_ic
     public model_ic_calc_landm
     public model_ic_interp
     public model_ic_write
+    public model_ic_file_name
 
     type(var_list) model_vars
 
@@ -478,11 +479,7 @@ contains
             call model_ic_calc_ts
         end if
 
-        file_name = "ic.gamil."// &
-            trim(to_string(num_model_lon))//"x"// &
-            trim(to_string(num_model_lat))//"x"// &
-            trim(to_string(num_model_lev))//"."// &
-            trim(data_date)//".nc"
+        file_name = model_ic_file_name()
 
         call io_manager_create_file(file_name, file_idx)
         call io_manager_def_dim(file_idx, "time", "integer", &
@@ -516,5 +513,15 @@ contains
         call notice(sub_name, "File "//trim(file_name)//" has been generated")
 
     end subroutine model_ic_write
+
+    character(300) function model_ic_file_name()
+
+        model_ic_file_name = "ic.gamil."// &
+            trim(to_string(num_model_lon))//"x"// &
+            trim(to_string(num_model_lat))//"x"// &
+            trim(to_string(num_model_lev))//"."// &
+            trim(data_date)//".nc"
+
+    end function model_ic_file_name
 
 end module model_ic

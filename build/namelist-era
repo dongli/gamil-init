@@ -7,4 +7,6 @@ uvtq_data_type                      = 1
 ozone_data_file                     = "N/A"
 topo_data_file                      = "../data/topo.2min.nc"
 aero_data_file                      = "N/A"
+sst_data_file                       = "../data/HadISST_sst.nc"
+ice_data_file                       = "../data/HadISST_ice.nc"
 /

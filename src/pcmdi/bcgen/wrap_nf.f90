@@ -384,3 +384,70 @@
    end subroutine handle_error
 
 !===============================================================================
+
+subroutine wrap_nf_copy_att (nfid_in, varid_in, name, nfid_out, varid_out)
+  implicit none
+  include 'netcdf.inc'
+
+  integer nfid_in, varid_in, nfid_out, varid_out
+  character*(*) name
+
+  integer ret
+
+  ret = nf_copy_att (nfid_in, varid_in, name, nfid_out, varid_out)
+  if (ret /= NF_NOERR) then
+     write(6,*) nf_strerror (ret)
+     call abort
+  end if
+end subroutine wrap_nf_copy_att
+
+subroutine wrap_nf_get_att_double (nfid, varid, name, dvals)
+  implicit none
+  include 'netcdf.inc'
+
+  integer nfid, varid
+  character*(*) name
+  double precision dvals
+
+  integer ret
+
+  ret = nf_get_att_double (nfid, varid, name, dvals)
+  if (ret /= NF_NOERR) then
+     write(6,*) nf_strerror (ret), ": ", trim(name)
+     call abort
+  end if
+end subroutine wrap_nf_get_att_double
+
+subroutine wrap_nf_get_att_text (nfid, varid, name, text)
+  implicit none
+  include 'netcdf.inc'
+
+  integer nfid, varid
+  character*(*) name, text
+
+  integer ret
+
+  ret = nf_get_att_text (nfid, varid, name, text)
+  if (ret /= NF_NOERR) then
+     write(6,*) nf_strerror (ret), ": ", trim(name)
+     call abort
+  end if
+end subroutine wrap_nf_get_att_text
+
+subroutine wrap_nf_put_att_real (nfid, varid, name, xtype, len, dvals)
+  implicit none
+  include 'netcdf.inc'
+
+  integer nfid, varid, xtype, len
+  character*(*) name
+  real dvals
+
+  integer ret
+
+  ret = nf_put_att_real (nfid, varid, name, xtype, len, dvals)
+  if (ret /= NF_NOERR) then
+     write(6,*) nf_strerror (ret)
+     call abort
+  end if
+end subroutine wrap_nf_put_att_real
+

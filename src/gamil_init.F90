@@ -3,6 +3,7 @@ program gamil_init
     use model_grids
     use source_data
     use model_ic
+    use model_bc
     use model_fc
 
     implicit none
@@ -12,6 +13,8 @@ program gamil_init
     character(300) :: ozone_data_file = "N/A"
     character(300) :: aero_data_file = "N/A"
     character(300) :: topo_data_file  = "N/A"
+    character(300) :: sst_data_file = "N/A"
+    character(300) :: ice_data_file = "N/A"
 
     character(300) namelist_file
 
@@ -20,7 +23,8 @@ program gamil_init
         model_grid_type, uvtq_data_type, &
         model_grid_file, uvtq_data_file, &
         ozone_data_file, topo_data_file, &
-        aero_data_file
+        aero_data_file, sst_data_file,   &
+        ice_data_file
 
     if (command_argument_count() /= 1) then
         call print_usage
@@ -49,6 +53,12 @@ program gamil_init
         call source_data_start_aerosol(aero_data_file)
         call model_fc_interp_aerosol
         call source_data_end_aerosol
+    end if
+
+    if (sst_data_file /= "N/A") then
+        call model_bc_init(sst_data_file, ice_data_file, model_ic_file_name())
+        call model_bc_interp
+        call model_bc_correct
     end if
 
 contains

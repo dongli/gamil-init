@@ -1,4 +1,6 @@
-program pcmdisst
+subroutine pcmdi_bcgen(infil, outfilclim, outfilamip, mon1, iyr1, monn, iyrn, &
+                       mon1rd, iyr1rd, monnrd, iyrnrd, mon1clm, iyr1clm, &
+                       monnclm, iyrnclm, mon1out, iyr1out, monnout, iyrnout)
 !------------------------------------------------------------------------------------
 !
 ! Purpose: Wrapper program for routines (provided by Karl Taylor of PCMDI) which modify 
@@ -13,35 +15,33 @@ program pcmdisst
 
    include 'netcdf.inc'
 
-   integer :: mon1 = -1           ! start month of period of interest plus buffer
-   integer :: iyr1 = -1           ! start year of period of interest plus buffer
-   integer :: monn = -1           ! end month of period of interest plus buffer
-   integer :: iyrn = -1           ! end year of period of interest plus buffer
-   integer :: mon1rd = -1         ! start month to read from input data
-   integer :: iyr1rd = -1         ! start year to read from input data
-   integer :: monnrd = -1         ! end month to read from input data
-   integer :: iyrnrd = -1         ! end year to read from input data
-   integer :: mon1clm = -1        ! start month to use for climatology
-   integer :: iyr1clm = -1        ! start year to use for climatology
-   integer :: monnclm = -1        ! end month to use for climatology
-   integer :: iyrnclm = -1        ! end year to use for climatology
+   character(*), intent(in) :: infil      ! input filename.
+   character(*), intent(in) :: outfilclim ! output climatology file
+   character(*), intent(in) :: outfilamip ! output AMIP-style file
+   integer, intent(in) :: mon1            ! start month of period of interest plus buffer
+   integer, intent(in) :: iyr1            ! start year of period of interest plus buffer
+   integer, intent(in) :: monn            ! end month of period of interest plus buffer
+   integer, intent(in) :: iyrn            ! end year of period of interest plus buffer
+   integer, intent(in) :: mon1rd          ! start month to read from input data
+   integer, intent(in) :: iyr1rd          ! start year to read from input data
+   integer, intent(in) :: monnrd          ! end month to read from input data
+   integer, intent(in) :: iyrnrd          ! end year to read from input data
+   integer, intent(in) :: mon1clm         ! start month to use for climatology
+   integer, intent(in) :: iyr1clm         ! start year to use for climatology
+   integer, intent(in) :: monnclm         ! end month to use for climatology
+   integer, intent(in) :: iyrnclm         ! end year to use for climatology
+   integer, intent(in) :: mon1out         ! start month written to output file (default mon1rd)
+   integer, intent(in) :: iyr1out         ! start year written to output file (default iyr1rd)
+   integer, intent(in) :: monnout         ! end month written to output file (default monnrd)
+   integer, intent(in) :: iyrnout         ! end year written to output file (default iyrnrd)
+
+   integer :: nmon                ! total number of months of period of interest plus buffer
    integer :: nlat = -1           ! number of latitudes (e.g. 64 for typical T42)
    integer :: nlon = -1           ! number of longitudes (e.g. 128 for typical T42)
-   integer :: mon1out = -1        ! start month written to output file (default mon1rd)
-   integer :: iyr1out = -1        ! start year written to output file (default iyr1rd)
-   integer :: monnout = -1        ! end month written to output file (default monnrd)
-   integer :: iyrnout = -1        ! end year written to output file (default iyrnrd)
-   integer :: nmon                ! total number of months of period of interest plus buffer
-
    logical :: oldttcalc = .false. ! true => bfb agreement with original code
 
-   character(len=120) :: infil      = ' ' ! input filename.
-   character(len=120) :: outfilclim = ' ' ! output climatology file
-   character(len=120) :: outfilamip = ' ' ! output AMIP-style file
    character(len=256) :: string           ! temporary character variable
 
-   character(len=256) :: arg                 ! cmd line argument
-   character(len=512) :: cmdline             ! input command line
    character(len=19)  :: cur_timestamp
    character(len=1024) :: prev_history = ' ' ! history attribute from input file
    character(len=1024) :: history = ' '      ! history attribute for output files
@@ -51,20 +51,6 @@ program pcmdisst
    integer :: ncidin = -1         ! input file handle
    integer :: londimid = -1       ! longitude dimension id
    integer :: latdimid = -1       ! latitude dimension id
-!
-! Cmd line
-!
-   integer           :: n, nargs
-!
-! Namelist
-!
-   namelist /cntlvars/ mon1, iyr1, monn, iyrn, mon1rd, iyr1rd, monnrd, iyrnrd, &
-                       mon1clm, iyr1clm, monnclm, iyrnclm, mon1out, &
-                       iyr1out, monnout, iyrnout, oldttcalc
-!
-! Read namelist
-!
-   read (5,cntlvars)
 !
 ! Check that all required input items were specified in the namelist
 !
@@ -165,58 +151,6 @@ program pcmdisst
                'first and last months specified. Check nmon, mon1, iyr1, monn, iyrn'
       call err_exit (string)
    end if
-
-   ! parse command line arguments, saving them to be written to history attribute
-   nargs = command_argument_count ()
-   n = 1
-   cmdline = 'bcgen '
-   do while (n <= nargs)
-      arg = ' '
-      call get_command_argument (n, arg)
-      n = n + 1
-      select case (arg)
-      case ('-i')
-         call get_command_argument (n, arg)
-         n = n + 1
-         infil = arg
-         cmdline = trim(cmdline) // ' -i ' // trim(infil)
-      case ('-c')
-         call get_command_argument (n, arg)
-         n = n + 1
-         outfilclim = arg
-         cmdline = trim(cmdline) // ' -c ' // trim(outfilclim)
-      case ('-t')
-         call get_command_argument (n, arg)
-         n = n + 1
-         outfilamip = arg
-         cmdline = trim(cmdline) // ' -t ' // trim(outfilamip)
-      case default
-         write (6,*) 'Argument ', arg,' is not known'
-         call usage_exit (' ')
-      end select
-   end do
-
-!
-! Check required input character variables
-!
-   if (infil == ' ') then
-      call usage_exit ('input file must be specified using -i command-line option')
-   end if
-
-   if (outfilclim == ' ') then
-      call usage_exit ('output climatology file must be specified using -c command-line option')
-   end if
-   
-   if (outfilamip == ' ') then
-      call usage_exit ('output time series file must be specified using -t command-line option')
-   end if
-!
-! Set defaults for unspecified variables   
-!
-   if (mon1out == -1) mon1out = mon1rd
-   if (iyr1out == -1) iyr1out = iyr1rd
-   if (monnout == -1) monnout = monnrd
-   if (iyrnout == -1) iyrnout = iyrnrd
 !
 ! Check validity of output dates
 !
@@ -247,9 +181,9 @@ program pcmdisst
    
    call get_curr_timestamp(cur_timestamp)
    if (len_trim(prev_history) == 0) then
-      history = cur_timestamp // ' ' // trim(cmdline)
+      history = cur_timestamp
    else
-      history = trim(prev_history) // char(10) // cur_timestamp // ' ' // trim(cmdline)
+      history = trim(prev_history) // char(10) // cur_timestamp
    end if
 
    write(6,*)'Grid size is nlon,nlat=', nlon, nlat
@@ -262,8 +196,7 @@ program pcmdisst
                iyr1out, monnout, iyrnout, ncidin, outfilclim, &
                outfilamip, nmon, oldttcalc, history)
    write(6,*)'Done writing output files ', trim(outfilclim), ' and ', trim(outfilamip)
-   stop 0
-end program pcmdisst
+end subroutine pcmdi_bcgen
 
 subroutine verify_monthindx (indx, varname)
 !------------------------------------------------------------------------------------
@@ -285,22 +218,6 @@ subroutine verify_monthindx (indx, varname)
 
    return
 end subroutine verify_monthindx
-
-subroutine err_exit (string)
-!------------------------------------------------------------------------------------
-!
-! Purpose: Print an error message and exit
-!
-!------------------------------------------------------------------------------------
-   implicit none
-!
-! Input arguments
-!
-   character(len=*), intent(in) :: string
-
-   write(6,*) string
-   stop 999
-end subroutine err_exit
 
 subroutine verify_input (ivar, ivarname, string)
 !------------------------------------------------------------------------------------
@@ -328,24 +245,3 @@ subroutine verify_input (ivar, ivarname, string)
 
    return
 end subroutine verify_input
-
-subroutine usage_exit (arg)
-   implicit none
-   character*(*) arg
-   
-   if (arg /= ' ') write (6,*) arg
-   write (6,*) 'Usage: bcgen -i infile -c climfile -t tsfile < namelist_file'
-   write (6,*) '  -i file: input file'
-   write (6,*) '  -c file: output climatology file'
-   write (6,*) '  -t file: output time series file'
-   stop 999
-end subroutine usage_exit
-
-subroutine get_curr_timestamp(time)
-! return timestamp formatted as "YYYY-MM-DD HH:MM:SS"   
-   character(len=19), intent(out) :: time
-   integer :: t(8)
-   call date_and_time(values=t)
-   write(time,'(i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') t(1),'-',t(2),'-',t(3),' ',&
-                                                         t(5),':',t(6),':',t(7)
-end subroutine get_curr_timestamp
