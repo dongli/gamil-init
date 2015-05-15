@@ -24,7 +24,8 @@ contains
         character(10) model_aero_names(num_aero)
         real(8) int_coef(num_aero)
 
-        real(8), allocatable :: model_ps(:,:), model_p(:,:,:), tmp_p(:,:,:)
+        real(8), pointer :: model_ps(:,:)
+        real(8), allocatable :: model_p(:,:,:), tmp_p(:,:,:)
         class(var), pointer :: ptr1, ptr2
         real(8), pointer :: tmp1(:,:,:), tmp2(:,:,:)
         real(8), allocatable, target :: tmp3(:,:,:), tmp4(:,:,:)
@@ -36,41 +37,41 @@ contains
 
         data_aero_names ( 1) = "SO4"
         model_aero_names( 1) = "MSUL_V"
-        int_coef            ( 1) = 1.0d0
+        int_coef        ( 1) = 1.0d0
         data_aero_names ( 2) = "SSLT01+SSLT02+SSLT03+SSLT04"
         model_aero_names( 2) = "MSSLT_V"
-        int_coef            ( 2) = 1.0d0
+        int_coef        ( 2) = 1.0d0
         data_aero_names ( 3) = "DST01"
         model_aero_names( 3) = "MDUST1_V"
-        int_coef            ( 3) = 1.0d0
+        int_coef        ( 3) = 1.0d0
         data_aero_names ( 4) = "DST02"
         model_aero_names( 4) = "MDUST2_V"
-        int_coef            ( 4) = 1.0d0
+        int_coef        ( 4) = 1.0d0
         data_aero_names ( 5) = "DST03"
         model_aero_names( 5) = "MDUST3_V"
-        int_coef            ( 5) = 1.0d0
+        int_coef        ( 5) = 1.0d0
         data_aero_names ( 6) = "DST04"
         model_aero_names( 6) = "MDUST4_V"
-        int_coef            ( 6) = 1.0d0
+        int_coef        ( 6) = 1.0d0
         data_aero_names ( 7) = "OC1"
         model_aero_names( 7) = "MOCPHO_V"
-        int_coef            ( 7) = 1.0d0
+        int_coef        ( 7) = 1.0d0
         data_aero_names ( 8) = "CB1"
         model_aero_names( 8) = "MBCPHO_V"
-        int_coef            ( 8) = 1.0d0
+        int_coef        ( 8) = 1.0d0
         data_aero_names ( 9) = "OC2"
         model_aero_names( 9) = "MOCPHI_V"
-        int_coef            ( 9) = 1.0d0
+        int_coef        ( 9) = 1.0d0
         data_aero_names (10) = "CB2"
         model_aero_names(10) = "MBCPHI_V"
-        int_coef            (10) = 1.0d0
+        int_coef        (10) = 1.0d0
 
         ! choose the vertical levels of model aerosol data
         num_lev = num_model_lev+1
         call model_aero_lev%init("lev", "level (sigma vertical cooordinate)", "1", [num_lev])
         call model_aero_lev%set_values(model_lev_bnds)
 
-        ! add aerosol data
+        ! Add aerosol data.
         dims = [num_model_lon,num_model_lat,num_lev]
         do i = 1, num_aero
             num_sub_aero = count_substr(data_aero_names(i), "+")
@@ -83,7 +84,10 @@ contains
                 ptr1%get_long_name(), ptr1%get_units(), dims)
         end do
 
-        allocate(model_ps(num_model_lon,num_model_lat))
+        ! Add aerosol data surface pressure.
+        call model_aero_list%append("PS", "surface pressure", "Pa", dims(1:2))
+        call model_aero_list%get_tail_values(model_ps)
+
         allocate(model_p(num_model_lon,num_model_lat,num_lev))
         allocate(tmp_p(num_model_lon,num_model_lat,num_aero_lev))
         allocate(tmp3(num_model_lon,num_model_lat,num_aero_lev))
@@ -118,6 +122,8 @@ contains
             ! interpolate surface pressure onto model grids
             call model_gears_interp_h(aero_lon, aero_lat, aero_ps, &
                 model_lon, model_lat, model_ps, 1)
+            ptr2 => model_aero_list%get_var("PS")
+            call io_manager_put_var(file_idx, ptr2, rec=time)
             ! ------------------------------------------------------------------
             ! calculate pressure of horizontal model grids + vertical data levels
             do k = 1, num_aero_lev

@@ -18,8 +18,15 @@ module model_grids
     type(var_list) model_dims
     type(var_list) model_dims_aux
 
+    ! Horizontal lat-lon mesh grid coordinates
     real(8), pointer :: model_lon(:)
     real(8), pointer :: model_lat(:)
+
+    integer, parameter :: classic_sigma_pressure = 1
+    integer, parameter :: hybrid_sigma_pressure = 2
+    integer :: model_vertical_coordinate_type = 0
+
+    ! Classic sigma-pressure coordinate parameters
     real(8), pointer :: model_lev(:)
     real(8), pointer :: model_lev_bnds(:)
     real(8), pointer :: model_pt

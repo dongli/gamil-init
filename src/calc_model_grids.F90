@@ -61,7 +61,8 @@ subroutine calc_model_grids(NX, NY)
 !
     ! ??????????????????????????????????????????????????????????????????????????
     ! Temporal codes:
-    integer ncid, dim_id, var_id, ierr
+    integer ncid, dim_id, var_id, ierr, k
+    real(8), parameter :: cam_ref_ps = 1.0d5 ! Reference surface pressure (Pa)
     ! ??????????????????????????????????????????????????????????????????????????
 
     ! --------------------------------------------------------------------------
@@ -76,7 +77,7 @@ subroutine calc_model_grids(NX, NY)
     model_lon = model_lon*Rad2Deg
 
     ! --------------------------------------------------------------------------
-    ! Set grid latitude
+    ! Set grid latitude.
     num_model_lat = NY
     call model_dims%append("lat", "latitude", "degrees_north", [num_model_lat])
     call model_dims%get_tail_values(model_lat)
@@ -91,7 +92,7 @@ subroutine calc_model_grids(NX, NY)
     else if (model_grid_type == even_area_grid) then
         call notice(sub_name, "GAMIL grid is even-area grid")
         M1= NY-1
-        B = 1.85
+        B = 2
         A  = B*2.0D0/PI
         A2 = A*2.0D0
         DA = 1.0D0/A
@@ -142,7 +143,7 @@ subroutine calc_model_grids(NX, NY)
     end if
 
     ! --------------------------------------------------------------------------
-    ! Set vertical grids
+    ! Set vertical grids.
     ! ??????????????????????????????????????????????????????????????????????????
     ! TODO: For the time being, we can just read the sigma coordinates from file
     !       but we should use more elegant way to set them.
@@ -157,12 +158,6 @@ subroutine calc_model_grids(NX, NY)
     call handle_netcdf_error(sub_name, __LINE__, ierr)
     ierr = nf90_inquire_dimension(ncid, dim_id, len=num_model_lev)
     call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    call model_dims%append("lev", "", "", [num_model_lev])
-    call model_dims%get_tail_values(model_lev)
-
-    call model_dims%append("ilev", "", "", [num_model_lev+1])
-    call model_dims%get_tail_values(model_lev_bnds)
 
     call model_dims_aux%append("P0", "reference pressure", "Pa")
     call model_dims_aux%get_tail_values(model_p0)
@@ -202,6 +197,26 @@ subroutine calc_model_grids(NX, NY)
 
     ierr = nf90_close(ncid)
     call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+    ! NOTICE: Although the vertical coordinate data in the file show itself as
+    !         hybrid sigma-pressure coordinate, it is classic sigma-pressure
+    !         coordinate in GAMIL currently!
+    model_vertical_coordinate_type = classic_sigma_pressure
+    call model_dims%append("lev", "", "", [num_model_lev])
+    call model_dims%get_tail_values(model_lev)
+    call model_dims%append("ilev", "", "", [num_model_lev+1])
+    call model_dims%get_tail_values(model_lev_bnds)
+    call model_dims_aux%append("pmtop", "model top pressure", "Pa")
+    call model_dims_aux%get_tail_values(model_pt)
+    ! Set the classic sigma-pressure coordinates from the read hybrid ones.
+    model_pt = model_hyai(1)*model_p0
+    model_lev_bnds(1) = 0.0d0
+    do k = 1, num_model_lev
+        model_lev_bnds(k+1) = (model_hyai(k+1)*cam_ref_ps+ &
+                               model_hybi(k+1)*model_p0-model_pt)/ &
+                              (model_p0-model_pt)
+        model_lev(k) = 0.5d0*(model_lev_bnds(k)+model_lev_bnds(k+1))
+    end do
     ! ??????????????????????????????????????????????????????????????????????????
 
     model_2d_dims = [num_model_lon,num_model_lat]
