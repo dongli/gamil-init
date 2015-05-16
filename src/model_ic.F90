@@ -491,9 +491,9 @@ contains
         ptr => model_vars%get_head()
         do i = 1, model_vars%get_num_var()
             select type (ptr)
-            type is (var2d)
+            type is (var2d_d)
                 call io_manager_def_var(file_idx, ptr, ["lon ","lat ","time"])
-            type is (var3d)
+            type is (var3d_d)
                 call ptr%reshape([1,3,2])
                 call io_manager_def_var(file_idx, ptr, ["lon ","lev ","lat ","time"])
             end select

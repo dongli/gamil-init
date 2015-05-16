@@ -10,7 +10,7 @@ module model_fc
     implicit none
 
     type(var_list) model_aero_list
-    type(var1d) model_aero_lev
+    type(var1d_d) model_aero_lev
 
 contains
 
@@ -25,6 +25,7 @@ contains
         real(8) int_coef(num_aero)
 
         real(8), pointer :: model_ps(:,:)
+        integer, pointer :: date
         real(8), allocatable :: model_p(:,:,:), tmp_p(:,:,:)
         class(var), pointer :: ptr1, ptr2
         real(8), pointer :: tmp1(:,:,:), tmp2(:,:,:)
@@ -104,13 +105,26 @@ contains
         call model_grids_add_2d_dims(file_idx)
         call io_manager_add_dim(file_idx, model_aero_lev)
 
+        ! Add 'date' variable.
+        call model_aero_list%append("date", "date integer", "1", data_type="integer")
+        call model_aero_list%get_tail_values(date)
+
         ptr1 => model_aero_list%get_head()
         do i = 1, model_aero_list%get_num_var()
-            call io_manager_def_var(file_idx, ptr1, ["lon ","lat ","lev ","time"])
+            if (ptr1%get_name() == "PS") then
+                call io_manager_def_var(file_idx, ptr1, ["lon ","lat ","time"])
+            else if (ptr1%get_name() == "date") then
+                call io_manager_def_var(file_idx, ptr1, ["time"])
+            else
+                call io_manager_def_var(file_idx, ptr1, ["lon ","lat ","lev ","time"])
+            end if
             ptr1 => ptr1%next
         end do
 
-        do time = 1, 1!num_aero_time
+        do time = 1, num_aero_time
+            date = aero_date(time)
+            ptr2 => model_aero_list%get_var("date")
+            call io_manager_put_var(file_idx, ptr2, rec=time)
             ! ------------------------------------------------------------------
             call notice(sub_name, "Interpolate aerosol data on "// &
                 trim(integer_to_string(aero_date(time))))
@@ -151,7 +165,7 @@ contains
                 if (num_sub_aero == 1) then
                     ptr1 => data_aero_list%get_var(data_aero_names(aero))
                     select type (ptr1)
-                    type is (var3d)
+                    type is (var3d_d)
                         tmp1 => ptr1%get_values()
                     end select
                 else
@@ -160,7 +174,7 @@ contains
                         ptr1 => data_aero_list%get_var( &
                             get_substr(data_aero_names(aero), "+", i))
                         select type (ptr1)
-                        type is (var3d)
+                        type is (var3d_d)
                             tmp1 => ptr1%get_values()
                         end select
                         tmp4 = tmp4+tmp1
@@ -183,7 +197,7 @@ contains
                 ! get model aerosol data pointer
                 ptr2 => model_aero_list%get_var(model_aero_names(aero))
                 select type (ptr2)
-                type is (var3d)
+                type is (var3d_d)
                     tmp2 => ptr2%get_values()
                 end select
                 ! ==============================================================

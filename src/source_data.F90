@@ -634,7 +634,7 @@ contains
         ptr => data_aero_list%get_head()
         do i = 1, data_aero_list%get_num_var()
             select type (ptr)
-            type is (var3d)
+            type is (var3d_d)
                 tmp => ptr%get_values()
             end select
             ierr = nf90_get_var(aero_ncid, aero_var_id(i), tmp, start3d, count3d)

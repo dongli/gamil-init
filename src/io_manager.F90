@@ -12,7 +12,7 @@ module io_manager
     integer :: num_file = 0
 
     type dim_ptr
-        type(var1d), pointer :: ptr
+        type(var1d_d), pointer :: ptr
     end type dim_ptr
 
     type file_info
@@ -90,7 +90,7 @@ contains
         end if
         dimid => file%dimids(file%num_dim)
         select type (dim)
-        type is (var1d)
+        type is (var1d_d)
             file%dims(file%num_dim)%ptr => dim
         class default
             call report_error(sub_name, "Dimension variable must be 1D!")
@@ -115,7 +115,7 @@ contains
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
         select type (dim)
-        type is (var1d)
+        type is (var1d_d)
             ierr = nf90_put_var(file%ncid, varid, dim%get_values())
             call handle_netcdf_error(sub_name, __LINE__, ierr)
         end select
@@ -132,6 +132,7 @@ contains
         integer dimids(4), i
         integer num_dim, ierr
         integer, pointer :: varid
+        integer data_type
 
         character(50), parameter :: sub_name = "io_manager_def_var"
 
@@ -155,11 +156,18 @@ contains
         ierr = nf90_redef(file%ncid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
+        select case (vari%get_data_type())
+        case ("double")
+            data_type = nf90_double
+        case ("integer")
+            data_type = nf90_int
+        end select
+
         if (present(dim_names)) then
-            ierr = nf90_def_var(file%ncid, vari%get_name(), nf90_double, &
+            ierr = nf90_def_var(file%ncid, vari%get_name(), data_type, &
                 dimids(1:num_dim), varid)
         else
-            ierr = nf90_def_var(file%ncid, vari%get_name(), nf90_double, varid)
+            ierr = nf90_def_var(file%ncid, vari%get_name(), data_type, varid)
         end if
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
@@ -205,15 +213,19 @@ contains
         end if
 
         select type (vari)
-        type is (var0d)
-            ierr = nf90_put_var(file%ncid, varid, vari%get_values())
-        type is (var1d)                                                     
+        type is (var0d_i)
+            ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start)
+        type is (var0d_d)
+            ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start)
+        type is (var1d_d)
             ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start, count)
-        type is (var2d)                                                     
+        type is (var1d_i)
             ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start, count)
-        type is (var3d)                                                     
+        type is (var2d_d)
             ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start, count)
-        type is (var4d)                                                     
+        type is (var3d_d)
+            ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start, count)
+        type is (var4d_d)
             ierr = nf90_put_var(file%ncid, varid, vari%get_values(), start, count)
         end select
 
