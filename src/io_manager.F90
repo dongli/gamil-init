@@ -132,7 +132,6 @@ contains
         integer dimids(4), i
         integer num_dim, ierr
         integer, pointer :: varid
-        integer data_type
 
         character(50), parameter :: sub_name = "io_manager_def_var"
 
@@ -156,18 +155,12 @@ contains
         ierr = nf90_redef(file%ncid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        select case (vari%get_data_type())
-        case ("double")
-            data_type = nf90_double
-        case ("integer")
-            data_type = nf90_int
-        end select
-
         if (present(dim_names)) then
-            ierr = nf90_def_var(file%ncid, vari%get_name(), data_type, &
-                dimids(1:num_dim), varid)
+            ierr = nf90_def_var(file%ncid, vari%get_name(), &
+                vari%get_data_type(), dimids(1:num_dim), varid)
         else
-            ierr = nf90_def_var(file%ncid, vari%get_name(), data_type, varid)
+            ierr = nf90_def_var(file%ncid, vari%get_name(), &
+                vari%get_data_type(), varid)
         end if
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
@@ -263,12 +256,12 @@ contains
 
     end subroutine io_manager_close_file
 
-    subroutine io_manager_def_dim(file_idx, dim_name, var_type, &
+    subroutine io_manager_def_dim(file_idx, dim_name, data_type, &
         dim_size, long_name, units)
 
         integer, intent(in) :: file_idx
         character(*), intent(in) :: dim_name
-        character(*), intent(in) :: var_type
+        integer, intent(in) :: data_type
         integer, intent(in), optional :: dim_size
         character(*), intent(in), optional :: long_name, units
 
@@ -296,14 +289,7 @@ contains
         end if
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        select case (var_type)
-        case ("integer")
-            ierr = nf90_def_var(file%ncid, dim_name, nf90_int, dimid, varid)
-        case ("real(8)")
-            ierr = nf90_def_var(file%ncid, dim_name, nf90_double, dimid, varid)
-        case ("real(4)")
-            ierr = nf90_def_var(file%ncid, dim_name, nf90_float, dimid, varid)
-        end select
+        ierr = nf90_def_var(file%ncid, dim_name, data_type, dimid, varid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
         if (present(long_name)) then

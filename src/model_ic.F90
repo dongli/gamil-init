@@ -482,7 +482,7 @@ contains
         file_name = model_ic_file_name()
 
         call io_manager_create_file(file_name, file_idx)
-        call io_manager_def_dim(file_idx, "time", "integer", &
+        call io_manager_def_dim(file_idx, "time", integer_type, &
             units="days since "//trim(data_date))
         call model_grids_add_dims(file_idx)
 

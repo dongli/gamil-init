@@ -39,7 +39,7 @@ module source_data
     character(30) data_date
 
     ! --------------------------------------------------------------------------
-    ! ozone data set
+    ! Ozone data set.
     integer num_ozone_lon, num_ozone_lat, num_ozone_lev, num_ozone_time
     real(8), allocatable :: data_ozone_lon(:)
     real(8), allocatable :: data_ozone_lat(:)
@@ -47,23 +47,35 @@ module source_data
     real(8), allocatable :: data_ozone(:,:,:,:)
 
     ! --------------------------------------------------------------------------
-    ! aerosol data set
-    integer aero_ncid, aero_time_step, aero_ps_var_id
-    integer, allocatable :: aero_var_id(:)
+    ! Aerosol data set.
+    integer aero_ncid, aero_time_step
+    integer num_aero_var
+    integer aero_var_ids(nf90_max_vars)
+    logical aero_var_read_each_time(nf90_max_vars)
     integer num_aero_lon, num_aero_lat, num_aero_lev, num_aero_time
-    real(8) aero_p0
-    real(8), allocatable :: aero_lon(:)
-    real(8), allocatable :: aero_lat(:)
-    real(8), allocatable :: aero_hyam(:)
-    real(8), allocatable :: aero_hybm(:)
-    real(8), allocatable :: aero_hyai(:)
-    real(8), allocatable :: aero_hybi(:)
-    integer, allocatable :: aero_time(:)
-    integer, allocatable :: aero_date(:)
-    real(8), allocatable :: aero_ps(:,:)
+    real(8), pointer :: aero_p0
+    real(8), pointer :: aero_lon(:)
+    real(8), pointer :: aero_lat(:)
+    real(8), pointer :: aero_hyam(:)
+    real(8), pointer :: aero_hybm(:)
+    real(8), pointer :: aero_hyai(:)
+    real(8), pointer :: aero_hybi(:)
+    real(8), pointer :: aero_time(:)
+    integer, pointer :: aero_date(:)
+    integer, pointer :: aero_datesec(:)
+    real(8), pointer :: aero_ps(:,:)
     real(8), allocatable :: aero_p(:,:,:)
     real(8), allocatable :: aero_dp(:,:,:)
     type(var_list) data_aero_list
+
+    ! --------------------------------------------------------------------------
+    ! Temporary pointers.
+    integer, pointer :: tmp_0d_i
+    real(8), pointer :: tmp_0d_d
+    integer, pointer :: tmp_1d_i(:)
+    real(8), pointer :: tmp_1d_d(:)
+    real(8), pointer :: tmp_2d_d(:,:)
+    real(8), pointer :: tmp_3d_d(:,:,:)
 
 contains
 
@@ -469,139 +481,128 @@ contains
 
         character(*), intent(in) :: file_name
 
-        integer ierr
-        integer time_dim_id, lon_dim_id, lat_dim_id, lev_dim_id
-        integer time_var_id, date_var_id, lon_var_id, lat_var_id
-        integer p0_var_id, hyam_var_id, hybm_var_id, hyai_var_id, hybi_var_id
-
-        integer, parameter :: num_aero_var = 13
-        character(6) :: aero_var_names(num_aero_var) = ["SO4   ", &
-            "SSLT01","SSLT02","SSLT03","SSLT04", &
-            "DST01 ","DST02 ","DST03 ","DST04 ", &
-            "OC1   ","CB1   ","OC2   ","CB2   "]
-        character(30) long_name, units
-        integer dims2d(2), dims3d(3), i
+        character(10) name
+        character(100) long_name, units
+        integer ierr, lon_dim_id, lat_dim_id, lev_dim_id, ilev_dim_id, time_dim_id
+        integer dim_size, i, dim_id, data_type, num_dim, dim_ids(4)
 
         character(50), parameter :: sub_name = "source_data_start_aerosol"
 
         call notice(sub_name, "Start read aerosol file """//trim(file_name)//"""")
 
+        ! Open the aerosol data file.
         ierr = nf90_open(file_name, nf90_nowrite, aero_ncid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        ierr = nf90_inq_dimid(aero_ncid, "time", time_dim_id)
+        ! Get all the variable ID's.
+        ierr = nf90_inq_varids(aero_ncid, num_aero_var, aero_var_ids)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        ierr = nf90_inquire_dimension(aero_ncid, time_dim_id, len=num_aero_time)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
+        ! Get the dimension sizes.
+        do i = 1, num_aero_var
+            ierr = nf90_inquire_variable(aero_ncid, aero_var_ids(i), name=name)
+            call handle_netcdf_error(sub_name, __LINE__, ierr)
+            if (.not. any(["lon ","lat ","lev ","ilev","time"] == name)) cycle
+            ierr = nf90_inq_dimid(aero_ncid, name, dim_id)
+            call handle_netcdf_error(sub_name, __LINE__, ierr)
+            ierr = nf90_inquire_dimension(aero_ncid, dim_id, len=dim_size)
+            call handle_netcdf_error(sub_name, __LINE__, ierr)
+            select case (name)
+            case ("lon")
+                num_aero_lon = dim_size
+                ierr = nf90_inq_dimid(aero_ncid, "lon", lon_dim_id)
+                call handle_netcdf_error(sub_name, __LINE__, ierr)
+            case ("lat")
+                num_aero_lat = dim_size
+                ierr = nf90_inq_dimid(aero_ncid, "lat", lat_dim_id)
+                call handle_netcdf_error(sub_name, __LINE__, ierr)
+            case ("lev")
+                num_aero_lev = dim_size
+                ierr = nf90_inq_dimid(aero_ncid, "lev", lev_dim_id)
+                call handle_netcdf_error(sub_name, __LINE__, ierr)
+            case ("ilev")
+                ierr = nf90_inq_dimid(aero_ncid, "ilev", ilev_dim_id)
+                call handle_netcdf_error(sub_name, __LINE__, ierr)
+            case ("time")
+                num_aero_time = dim_size
+                ierr = nf90_inq_dimid(aero_ncid, "time", time_dim_id)
+                call handle_netcdf_error(sub_name, __LINE__, ierr)
+            end select
+        end do
 
-        ierr = nf90_inq_dimid(aero_ncid, "lon", lon_dim_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
+        ! Define variables.
+        do i = 1, num_aero_var
+            ierr = nf90_inquire_variable(aero_ncid, aero_var_ids(i), name=name, &
+                xtype=data_type, ndims=num_dim, dimids=dim_ids)
+            call handle_netcdf_error(sub_name, __LINE__, ierr)
+            ierr = nf90_get_att(aero_ncid, aero_var_ids(i), "long_name", long_name)
+            call handle_netcdf_error(sub_name, __LINE__, ierr)
+            ierr = nf90_get_att(aero_ncid, aero_var_ids(i), "units", units)
+            if (ierr /= nf90_noerr) then
+                units = "1"
+            end if
+            select case (num_dim)
+            case (0)
+                call data_aero_list%append(name, long_name, units, data_type=data_type)
+                select type (var => data_aero_list%get_var(name))
+                type is (var0d_d)
+                    tmp_0d_d => var%get_values()
+                    ierr = nf90_get_var(aero_ncid, aero_var_ids(i), tmp_0d_d)
+                    call handle_netcdf_error(sub_name, __LINE__, ierr)
+                end select
+                aero_var_read_each_time(i) = .false.
+            case (1) ! 1D variable
+                if (dim_ids(1) == lon_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_lon], data_type=data_type)
+                else if (dim_ids(1) == lat_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_lat], data_type=data_type)
+                else if (dim_ids(1) == lev_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_lev], data_type=data_type)
+                else if (dim_ids(1) == ilev_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_lev+1], data_type=data_type)
+                else if (dim_ids(1) == time_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_time], data_type=data_type)
+                end if
+                select type (var => data_aero_list%get_var(name))
+                type is (var1d_i)
+                    tmp_1d_i => var%get_values()
+                    ierr = nf90_get_var(aero_ncid, aero_var_ids(i), tmp_1d_i)
+                    call handle_netcdf_error(sub_name, __LINE__, ierr)
+                type is (var1d_d)
+                    tmp_1d_d => var%get_values()
+                    ierr = nf90_get_var(aero_ncid, aero_var_ids(i), tmp_1d_d)
+                    call handle_netcdf_error(sub_name, __LINE__, ierr)
+                end select
+                aero_var_read_each_time(i) = .false.
+            case (3) ! 2D variable
+                if (dim_ids(1) == lon_dim_id .and. dim_ids(2) == lat_dim_id .and. dim_ids(3) == time_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_lon,num_aero_lat], data_type=data_type)
+                end if
+                aero_var_read_each_time(i) = .true.
+            case (4) ! 3D variable
+                if (dim_ids(1) == lon_dim_id .and. dim_ids(2) == lat_dim_id .and. dim_ids(3) == lev_dim_id .and. dim_ids(4) == time_dim_id) then
+                    call data_aero_list%append(name, long_name, units, [num_aero_lon,num_aero_lat,num_aero_lev], data_type=data_type)
+                end if
+                aero_var_read_each_time(i) = .true.
+            end select
+        end do
 
-        ierr = nf90_inquire_dimension(aero_ncid, lon_dim_id, len=num_aero_lon)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_dimid(aero_ncid, "lat", lat_dim_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inquire_dimension(aero_ncid, lat_dim_id, len=num_aero_lat)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_dimid(aero_ncid, "lev", lev_dim_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inquire_dimension(aero_ncid, lev_dim_id, len=num_aero_lev)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        allocate(aero_time(num_aero_time))
-        allocate(aero_date(num_aero_time))
-        allocate(aero_lon(num_aero_lon))
-        allocate(aero_lat(num_aero_lat))
-        allocate(aero_hyam(num_aero_lev))
-        allocate(aero_hybm(num_aero_lev))
-        allocate(aero_hyai(num_aero_lev+1))
-        allocate(aero_hybi(num_aero_lev+1))
-
-        ierr = nf90_inq_varid(aero_ncid, "time", time_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, time_var_id, aero_time)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "date", date_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, date_var_id, aero_date)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "lon", lon_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, lon_var_id, aero_lon)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "lat", lat_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, lat_var_id, aero_lat)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "P0", p0_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, p0_var_id, aero_p0)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "hyam", hyam_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, hyam_var_id, aero_hyam)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "hybm", hybm_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, hybm_var_id, aero_hybm)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "hyai", hyai_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, hyai_var_id, aero_hyai)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_inq_varid(aero_ncid, "hybi", hybi_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ierr = nf90_get_var(aero_ncid, hybi_var_id, aero_hybi)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
+        call data_aero_list%get_values("P0", aero_p0)
+        call data_aero_list%get_values("time", aero_time)
+        call data_aero_list%get_values("date", aero_date)
+        call data_aero_list%get_values("datesec", aero_datesec)
+        call data_aero_list%get_values("lon", aero_lon)
+        call data_aero_list%get_values("lat", aero_lat)
+        call data_aero_list%get_values("hyam", aero_hyam)
+        call data_aero_list%get_values("hybm", aero_hybm)
+        call data_aero_list%get_values("hyai", aero_hyai)
+        call data_aero_list%get_values("hybi", aero_hybi)
+        call data_aero_list%get_values("PS", aero_ps)
 
         ! ----------------------------------------------------------------------
-        ! inquire surface pressure id
-        allocate(aero_ps(num_aero_lon,num_aero_lat))
+        ! Create pressure and pressure thickness variables.
         allocate(aero_p(num_aero_lon,num_aero_lat,num_aero_lev))
         allocate(aero_dp(num_aero_lon,num_aero_lat,num_aero_lev))
-
-        ierr = nf90_inq_varid(aero_ncid, "PS", aero_ps_var_id)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ! ----------------------------------------------------------------------
-        ! inquire aerosol varible id and create aerosol variable list
-        allocate(aero_var_id(num_aero_var))
-        dims2d = [num_aero_lon,num_aero_lat]
-        dims3d = [num_aero_lon,num_aero_lat,num_aero_lev]
-        do i = 1, num_aero_var
-            ierr = nf90_inq_varid(aero_ncid, aero_var_names(i), aero_var_id(i))
-            call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-            ierr = nf90_get_att(aero_ncid, aero_var_id(i), "long_name", long_name)
-            call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-            ierr = nf90_get_att(aero_ncid, aero_var_id(i), "units", units)
-            call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-            call data_aero_list%append(aero_var_names(i), long_name, units, dims3d)
-        end do
 
         aero_time_step = 0
 
@@ -609,15 +610,10 @@ contains
 
     subroutine source_data_read_aerosol
 
+        character(10) name
         integer ierr, start2d(3), count2d(3),  start3d(4), count3d(4)
-
+        integer data_type, num_dim, dim_ids(4)
         integer i, j, k
-        real(8), pointer :: tmp(:,:,:)
-        class(var), pointer :: ptr
-
-        integer ncid
-        integer lon_dim_id, lat_dim_id, lev_dim_id
-        integer lon_var_id, lat_var_id, p_var_id
 
         character(50), parameter :: sub_name = "source_data_read_aerosol"
 
@@ -628,21 +624,30 @@ contains
         start3d = [1,1,1,aero_time_step]
         count3d = [num_aero_lon,num_aero_lat,num_aero_lev,1]
 
-        ierr = nf90_get_var(aero_ncid, aero_ps_var_id, aero_ps, start2d, count2d)
-        call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-        ptr => data_aero_list%get_head()
-        do i = 1, data_aero_list%get_num_var()
-            select type (ptr)
-            type is (var3d_d)
-                tmp => ptr%get_values()
-            end select
-            ierr = nf90_get_var(aero_ncid, aero_var_id(i), tmp, start3d, count3d)
+        do i = 1, num_aero_var
+            if (.not. aero_var_read_each_time(i)) cycle
+            ierr = nf90_inquire_variable(aero_ncid, aero_var_ids(i), name=name, &
+                xtype=data_type, ndims=num_dim, dimids=dim_ids)
             call handle_netcdf_error(sub_name, __LINE__, ierr)
-            ptr => ptr%next
+            select case (num_dim)
+            case (3) ! 2D variable
+                select type (var => data_aero_list%get_var(name))
+                type is (var2d_d)
+                    tmp_2d_d => var%get_values()
+                    ierr = nf90_get_var(aero_ncid, aero_var_ids(i), tmp_2d_d, start2d, count2d)
+                    call handle_netcdf_error(sub_name, __LINE__, ierr)
+                end select
+            case (4) ! 3D variable
+                select type (var => data_aero_list%get_var(name))
+                type is (var3d_d)
+                    tmp_3d_d => var%get_values()
+                    ierr = nf90_get_var(aero_ncid, aero_var_ids(i), tmp_3d_d, start3d, count3d)
+                    call handle_netcdf_error(sub_name, __LINE__, ierr)
+                end select
+            end select
         end do
 
-        ! calculate each level's pressure
+        ! Calculate each level's pressure.
         do k = 1, num_aero_lev
             do j = 1, num_aero_lat
                 do i = 1, num_aero_lon
@@ -651,27 +656,14 @@ contains
             end do
         end do
 
-        ! calculate each level's pressure thickness
+        ! Calculate each level's pressure thickness.
         do k = 1, num_aero_lev
             do j = 1, num_aero_lat
                 do i = 1, num_aero_lon
-                    aero_dp(i,j,k) = aero_ps(i,j)*(aero_hybi(k+1)-aero_hybi(k))
+                    aero_dp(i,j,k) = aero_p0*(aero_hyai(k+1)-aero_hyai(k))+aero_ps(i,j)*(aero_hybi(k+1)-aero_hybi(k))
                 end do
             end do
         end do
-
-        ierr = nf90_create("check_p.nc", nf90_clobber, ncid)
-        ierr = nf90_def_dim(ncid, "lon", num_aero_lon, lon_dim_id)
-        ierr = nf90_def_dim(ncid, "lat", num_aero_lat, lat_dim_id)
-        ierr = nf90_def_dim(ncid, "lev", num_aero_lev, lev_dim_id)
-        ierr = nf90_def_var(ncid, "lon", nf90_double, lon_dim_id, lon_var_id)
-        ierr = nf90_def_var(ncid, "lat", nf90_double, lat_dim_id, lat_var_id)
-        ierr = nf90_def_var(ncid, "p", nf90_double, [lon_dim_id,lat_dim_id,lev_dim_id], p_var_id)
-        ierr = nf90_enddef(ncid)
-        ierr = nf90_put_var(ncid, lon_var_id, aero_lon)
-        ierr = nf90_put_var(ncid, lat_var_id, aero_lat)
-        ierr = nf90_put_var(ncid, p_var_id, aero_p)
-        ierr = nf90_close(ncid)
 
     end subroutine source_data_read_aerosol
 
@@ -683,6 +675,11 @@ contains
 
         ierr = nf90_close(aero_ncid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        call data_aero_list%final
+
+        deallocate(aero_p)
+        deallocate(aero_dp)
 
     end subroutine source_data_end_aerosol
 

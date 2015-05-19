@@ -11,9 +11,13 @@
 
 module variable
 
+    use netcdf
+
     implicit none
 
     private
+
+    public double_type, float_type, integer_type
 
     public var, var_list
     public var0d_d, var1d_d, var2d_d, var3d_d, var4d_d
@@ -24,6 +28,10 @@ module variable
     integer, parameter :: long_name_str_len = 255
     integer, parameter :: units_str_len = 30
     integer, parameter :: data_type_str_len = 10
+
+    integer, parameter :: double_type = nf90_double
+    integer, parameter :: float_type = nf90_float
+    integer, parameter :: integer_type = nf90_int
 
     ! --------------------------------------------------------------------------
     type var
@@ -37,6 +45,7 @@ module variable
         procedure :: get_long_name => var_get_long_name
         procedure :: get_units => var_get_units
         procedure :: get_dims => var_get_dims
+        procedure :: get_num_dim => var_get_num_dim
         procedure :: get_data_type => var_get_data_type
         procedure :: reshape => var_reshape
         ! ======================================================================
@@ -49,6 +58,7 @@ module variable
     contains
         procedure :: get_values => var0d_d_get_values
         procedure :: get_data_type => var0d_d_get_data_type
+        procedure :: final => var0d_d_final
     end type var0d_d
 
     type, extends(var) :: var0d_i
@@ -56,6 +66,7 @@ module variable
     contains
         procedure :: get_values => var0d_i_get_values
         procedure :: get_data_type => var0d_i_get_data_type
+        procedure :: final => var0d_i_final
     end type var0d_i
 
     type, extends(var) :: var1d_d
@@ -64,6 +75,7 @@ module variable
     contains
         procedure :: get_values => var1d_d_get_values
         procedure :: get_data_type => var1d_d_get_data_type
+        procedure :: final => var1d_d_final
     end type var1d_d
 
     type, extends(var) :: var1d_i
@@ -72,6 +84,7 @@ module variable
     contains
         procedure :: get_values => var1d_i_get_values
         procedure :: get_data_type => var1d_i_get_data_type
+        procedure :: final => var1d_i_final
     end type var1d_i
 
     type, extends(var) :: var2d_d
@@ -80,6 +93,7 @@ module variable
     contains
         procedure :: get_values => var2d_d_get_values
         procedure :: get_data_type => var2d_d_get_data_type
+        procedure :: final => var2d_d_final
     end type var2d_d
 
     type, extends(var) :: var3d_d
@@ -88,6 +102,7 @@ module variable
     contains
         procedure :: get_values => var3d_d_get_values
         procedure :: get_data_type => var3d_d_get_data_type
+        procedure :: final => var3d_d_final
     end type var3d_d
 
     type, extends(var) :: var4d_d
@@ -96,6 +111,7 @@ module variable
     contains
         procedure :: get_values => var4d_d_get_values
         procedure :: get_data_type => var4d_d_get_data_type
+        procedure :: final => var4d_d_final
     end type var4d_d
 
     ! --------------------------------------------------------------------------
@@ -109,6 +125,7 @@ module variable
         procedure :: get_var => var_list_get_var
         procedure :: get_head => var_list_get_head
         procedure :: get_tail => var_list_get_tail
+        procedure :: final => var_list_final
         ! ======================================================================
         procedure :: var_list_get_tail_values_0d_d
         procedure :: var_list_get_tail_values_0d_i
@@ -124,6 +141,20 @@ module variable
                                       var_list_get_tail_values_2d_d, &
                                       var_list_get_tail_values_3d_d, &
                                       var_list_get_tail_values_4d_d
+        procedure :: var_list_get_values_0d_d
+        procedure :: var_list_get_values_0d_i
+        procedure :: var_list_get_values_1d_d
+        procedure :: var_list_get_values_1d_i
+        procedure :: var_list_get_values_2d_d
+        procedure :: var_list_get_values_3d_d
+        procedure :: var_list_get_values_4d_d
+        generic :: get_values => var_list_get_values_0d_d, &
+                                 var_list_get_values_0d_i, &
+                                 var_list_get_values_1d_d, &
+                                 var_list_get_values_1d_i, &
+                                 var_list_get_values_2d_d, &
+                                 var_list_get_values_3d_d, &
+                                 var_list_get_values_4d_d
     end type var_list
 
 contains
@@ -237,10 +268,34 @@ contains
 
     end function var_get_dims
 
+    function var_get_num_dim(this) result (res)
+
+        class(var), intent(in) :: this
+        integer res
+
+        select type (this)
+        type is (var0d_d)
+            res = 0
+        type is (var0d_i)
+            res = 0
+        type is (var1d_d)
+            res = 1
+        type is (var1d_i)
+            res = 1
+        type is (var2d_d)
+            res = 2
+        type is (var3d_d)
+            res = 3
+        type is (var4d_d)
+            res = 4
+        end select
+
+    end function var_get_num_dim
+
     function var_get_data_type(this) result (res)
 
         class(var), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
         select type (this)
         type is (var0d_d)
@@ -295,11 +350,19 @@ contains
     function var0d_d_get_data_type(this) result (res)
 
         class(var0d_d), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "double"
+        res = double_type
 
     end function var0d_d_get_data_type
+
+    subroutine var0d_d_final(this)
+
+        class(var0d_d), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var0d_d_final
 
     function var0d_i_get_values(this) result (res)
 
@@ -313,11 +376,19 @@ contains
     function var0d_i_get_data_type(this) result (res)
 
         class(var0d_i), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "integer"
+        res = integer_type
 
     end function var0d_i_get_data_type
+
+    subroutine var0d_i_final(this)
+
+        class(var0d_i), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var0d_i_final
 
     function var1d_d_get_values(this) result (res)
 
@@ -331,11 +402,19 @@ contains
     function var1d_d_get_data_type(this) result (res)
 
         class(var1d_d), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "double"
+        res = double_type
 
     end function var1d_d_get_data_type
+
+    subroutine var1d_d_final(this)
+
+        class(var1d_d), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var1d_d_final
 
     subroutine var_set_values_1d(this, values)
 
@@ -364,11 +443,19 @@ contains
     function var1d_i_get_data_type(this) result (res)
 
         class(var1d_i), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "integer"
+        res = integer_type
 
     end function var1d_i_get_data_type
+
+    subroutine var1d_i_final(this)
+
+        class(var1d_i), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var1d_i_final
 
     function var2d_d_get_values(this) result (res)
 
@@ -382,11 +469,19 @@ contains
     function var2d_d_get_data_type(this) result (res)
 
         class(var2d_d), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "double"
+        res = double_type
 
     end function var2d_d_get_data_type
+
+    subroutine var2d_d_final(this)
+
+        class(var2d_d), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var2d_d_final
 
     function var3d_d_get_values(this) result (res)
 
@@ -400,11 +495,19 @@ contains
     function var3d_d_get_data_type(this) result (res)
 
         class(var3d_d), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "double"
+        res = double_type
 
     end function var3d_d_get_data_type
+
+    subroutine var3d_d_final(this)
+
+        class(var3d_d), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var3d_d_final
 
     function var4d_d_get_values(this) result (res)
 
@@ -418,11 +521,19 @@ contains
     function var4d_d_get_data_type(this) result (res)
 
         class(var4d_d), intent(in) :: this
-        character(data_type_str_len) res
+        integer res
 
-        res = "double"
+        res = double_type
 
     end function var4d_d_get_data_type
+
+    subroutine var4d_d_final(this)
+
+        class(var4d_d), intent(inout) :: this
+
+        if (associated(this%values)) deallocate(this%values)
+
+    end subroutine var4d_d_final
 
     subroutine var_list_append(this, name, long_name, units, dims, pointer, data_type)
 
@@ -430,10 +541,10 @@ contains
         character(*), intent(in) :: name, long_name, units
         integer, intent(in), optional :: dims(:)
         class(var), intent(out), optional, pointer :: pointer
-        character(*), intent(in), optional :: data_type
+        integer, intent(in), optional :: data_type
 
         class(var), pointer :: ptr
-        character(data_type_str_len) data_type_
+        integer data_type_
 
         type(var0d_d) var0d_d_type
         type(var0d_i) var0d_i_type
@@ -446,25 +557,36 @@ contains
         if (present(data_type)) then
             data_type_ = data_type
         else
-            data_type_ = "double"
+            data_type_ = double_type
+        end if
+
+        if (.not. any([double_type,integer_type] == data_type_)) then
+            write(*, "('[Error]: var_list_append: Data type is invalid!')")
+            stop
         end if
 
         if (.not. associated(this%head)) then
             if (.not. present(dims)) then
                 select case (data_type_)
-                case ("double")
+                case (double_type)
                     allocate (this%head, source=var0d_d_type)
-                case ("integer")
+                case (integer_type)
                     allocate (this%head, source=var0d_i_type)
                 end select
             else
+        if (name == "time") then
+            print *, "check"
+        end if
+
                 select case (size(dims))
                 case (1)
                     select case (data_type_)
-                    case ("double")
+                    case (double_type)
                         allocate (this%head, source=var1d_d_type)
-                    case ("integer")
+                    case (integer_type)
                         allocate (this%head, source=var1d_i_type)
+                    case default
+                        write(*, "('[Error]: var_list_append: Data type is invalid!')")
                     end select
                 case (2)
                     allocate (this%head, source=var2d_d_type)
@@ -481,18 +603,18 @@ contains
         else
             if (.not. present(dims)) then
                 select case (data_type_)
-                case ("double")
+                case (double_type)
                     allocate (this%tail%next, source=var0d_d_type)
-                case ("integer")
+                case (integer_type)
                     allocate (this%tail%next, source=var0d_i_type)
                 end select
             else
                 select case (size(dims))
                 case (1)
                     select case (data_type_)
-                    case ("double")
+                    case (double_type)
                         allocate (this%tail%next, source=var1d_d_type)
-                    case ("integer")
+                    case (integer_type)
                         allocate (this%tail%next, source=var1d_i_type)
                     end select
                 case (2)
@@ -659,5 +781,128 @@ contains
         end select
 
     end subroutine var_list_get_tail_values_4d_d
+
+    subroutine var_list_get_values_0d_d(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        real(8), pointer :: values
+
+        select type (var => this%get_var(name))
+        type is (var0d_d)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_0d_d
+
+    subroutine var_list_get_values_0d_i(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        integer, pointer :: values
+
+        select type (var => this%get_var(name))
+        type is (var0d_i)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_0d_i
+
+    subroutine var_list_get_values_1d_d(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        real(8), pointer :: values(:)
+
+        select type (var => this%get_var(name))
+        type is (var1d_d)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_1d_d
+
+    subroutine var_list_get_values_1d_i(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        integer, pointer :: values(:)
+
+        select type (var => this%get_var(name))
+        type is (var1d_i)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_1d_i
+
+    subroutine var_list_get_values_2d_d(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        real(8), pointer :: values(:,:)
+
+        select type (var => this%get_var(name))
+        type is (var2d_d)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_2d_d
+
+    subroutine var_list_get_values_3d_d(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        real(8), pointer :: values(:,:,:)
+
+        select type (var => this%get_var(name))
+        type is (var3d_d)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_3d_d
+
+    subroutine var_list_get_values_4d_d(this, name, values)
+
+        class(var_list), intent(in) :: this
+        character(*), intent(in) :: name
+        real(8), pointer :: values(:,:,:,:)
+
+        select type (var => this%get_var(name))
+        type is (var4d_d)
+            values => var%values
+        end select
+
+    end subroutine var_list_get_values_4d_d
+
+    subroutine var_list_final(this)
+
+        class(var_list), intent(in) :: this
+
+        integer i
+        class(var), pointer :: ptr1, ptr2
+
+        ptr1 => this%get_head()
+        do i = 1, this%get_num_var()
+            ptr2 => ptr1%next
+            select type (ptr1)
+            type is (var0d_d)
+                call ptr1%final
+            type is (var0d_i)
+                call ptr1%final
+            type is (var1d_d)
+                call ptr1%final
+            type is (var1d_i)
+                call ptr1%final
+            type is (var2d_d)
+                call ptr1%final
+            type is (var3d_d)
+                call ptr1%final
+            type is (var4d_d)
+                call ptr1%final
+            end select
+            deallocate(ptr1)
+            ptr1 => ptr2
+        end do
+
+    end subroutine var_list_final
 
 end module variable

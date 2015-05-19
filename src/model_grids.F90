@@ -148,10 +148,6 @@ contains
         integer i
         class(var), pointer :: ptr
 
-        ! Set lev and ilev from the equivalent hybrid coefficients.
-        model_lev = model_hybm
-        model_lev_bnds = model_hybi
-
         ptr => model_dims%get_head()
         do i = 1, model_dims%get_num_var()
             call io_manager_add_dim(file_idx, ptr)
@@ -183,11 +179,6 @@ contains
             if (ptr%get_name() == "lon" .or. ptr%get_name() == "lat") then
                 call io_manager_add_dim(file_idx, ptr)
             end if
-            ptr => ptr%next
-        end do
-        ptr => model_dims_aux%get_head()
-        do i = 1, model_dims_aux%get_num_var()
-            call io_manager_add_var(file_idx, ptr)
             ptr => ptr%next
         end do
 
