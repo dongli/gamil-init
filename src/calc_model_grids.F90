@@ -70,25 +70,33 @@ subroutine calc_model_grids(NX, NY)
     num_model_lon = NX
     call model_dims%append("lon", "longitude", "degrees_east", [num_model_lon])
     call model_dims%get_tail_values(model_lon)
+    call model_dims%append("lon_bnds", "longitude bounds", "degrees_east", [num_model_lon])
+    call model_dims%get_tail_values(model_lon_bnds)
     DX = PI*2.0d0/NX
     do i = 1, NX
         model_lon(i) = DX*(i-1)
+        model_lon_bnds(i) = model_lon(i)+DX*0.5d0
     end do
     model_lon = model_lon*Rad2Deg
+    model_lon_bnds = model_lon_bnds*Rad2Deg
 
     ! --------------------------------------------------------------------------
     ! Set grid latitude.
     num_model_lat = NY
     call model_dims%append("lat", "latitude", "degrees_north", [num_model_lat])
     call model_dims%get_tail_values(model_lat)
+    call model_dims%append("lat_bnds", "latitude", "degrees_north", [num_model_lat])
+    call model_dims%get_tail_values(model_lat_bnds)
 
     if (model_grid_type == equal_interval_grid) then
         call notice(sub_name, "GAMIL grid is equal-interval grid")
         DY = PI/(NY-1)
         do j = 1, NY
             model_lat(j) = -PI*0.5+DY*(j-1)
+            model_lat_bnds(j) = model_lat(j)+DY*0.5d0
         end do
         model_lat = model_lat*Rad2Deg
+        model_lat_bnds = model_lat_bnds*Rad2Deg
     else if (model_grid_type == even_area_grid) then
         call notice(sub_name, "GAMIL grid is even-area grid")
         M1= NY-1
@@ -133,6 +141,7 @@ subroutine calc_model_grids(NX, NY)
 
         do j = 1, NY
             model_lat(j) = YTHU(J)*Rad2Deg-90.0d0
+            model_lat_bnds(j) = YTHV(J)*Rad2Deg-90.0d0
         end do
     end if
 

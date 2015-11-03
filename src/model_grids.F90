@@ -18,9 +18,11 @@ module model_grids
     type(var_list) model_dims
     type(var_list) model_dims_aux
 
-    ! Horizontal lat-lon mesh grid coordinates
+    ! Horizontal lat-lon mesh center grid coordinates
     real(8), pointer :: model_lon(:)
     real(8), pointer :: model_lat(:)
+    real(8), pointer :: model_lon_bnds(:)
+    real(8), pointer :: model_lat_bnds(:)
 
     integer, parameter :: classic_sigma_pressure = 1
     integer, parameter :: hybrid_sigma_pressure = 2
