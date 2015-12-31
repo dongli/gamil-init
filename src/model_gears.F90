@@ -48,16 +48,17 @@ contains
 
     end subroutine model_gears_interp_h
 
-    subroutine model_gears_interp_v(lev1, data1, lev2, data2, flag)
+    subroutine model_gears_interp_v(lev1, data1, lev2, data2, allow_extrap, flag)
  
         real(8), intent(in) :: lev1(:), data1(:), lev2(:)
         real(8), intent(out) :: data2(:)
+        logical, intent(in) :: allow_extrap
         integer, intent(in) :: flag
 
         if (flag == 0) then
-            call interp_linear(lev1, data1, lev2, data2)
+            call interp_linear(lev1, data1, lev2, data2, allow_extrap)
         else
-            call interp_log_linear(lev1, data1, lev2, data2)
+            call interp_log_linear(lev1, data1, lev2, data2, allow_extrap)
         end if
 
     end subroutine model_gears_interp_v

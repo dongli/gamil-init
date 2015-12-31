@@ -24,7 +24,9 @@ program gamil_init
         model_grid_file, uvtq_data_file, &
         ozone_data_file, topo_data_file, &
         aero_data_file, sst_data_file,   &
-        ice_data_file
+        ice_data_file, &
+        ! Some control parameters from modules
+        model_ic_allow_extrap
 
     if (command_argument_count() /= 1) then
         call print_usage

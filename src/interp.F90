@@ -107,10 +107,11 @@ contains
 
     end subroutine interp_bilinear
 
-    subroutine interp_linear(x1, data1, x2, data2, ierr)
+    subroutine interp_linear(x1, data1, x2, data2, allow_extrap, ierr)
 
         real(8), intent(in) :: x1(:), data1(:), x2(:)
         real(8), intent(out) :: data2(:)
+        logical, intent(in) :: allow_extrap
         integer, intent(out), optional :: ierr
 
         integer nx1, nx2
@@ -132,19 +133,34 @@ contains
                     i2(i) = ii+1
                     exit
                 else if (x2(i) < x1(1)) then
-                    i1(i) = 1
-                    i2(i) = 2
+                    if (allow_extrap) then
+                        i1(i) = 1
+                        i2(i) = 2
+                    else
+                        i1(i) = 1
+                        i2(i) = 1
+                    end if
                     exit
                 else if (x2(i) >= x1(nx1)) then
-                    i1(i) = nx1-1
-                    i2(i) = nx1
+                    if (allow_extrap) then
+                        i1(i) = nx1-1
+                        i2(i) = nx1
+                    else
+                        i1(i) = nx1
+                        i2(i) = nx1
+                    end if
                     exit
                 end if
             end do
-            tmp1 = x1(i1(i))
-            tmp2 = x1(i2(i))
-            wgt1(i) = (tmp2-x2(i))/(tmp2-tmp1)
-            wgt2(i) = (x2(i)-tmp1)/(tmp2-tmp1)
+            if (i1(i) == i2(i)) then
+                wgt1(i) = 0.5d0
+                wgt2(i) = 0.5d0
+            else
+                tmp1 = x1(i1(i))
+                tmp2 = x1(i2(i))
+                wgt1(i) = (tmp2-x2(i))/(tmp2-tmp1)
+                wgt2(i) = (x2(i)-tmp1)/(tmp2-tmp1)
+            end if
         end do
 
         do i = 1, nx2
@@ -153,10 +169,11 @@ contains
 
     end subroutine interp_linear
 
-    subroutine interp_log_linear(x1, data1, x2, data2, ierr)
+    subroutine interp_log_linear(x1, data1, x2, data2, allow_extrap, ierr)
 
         real(8), intent(in) :: x1(:), data1(:), x2(:)
         real(8), intent(out) :: data2(:)
+        logical, intent(in) :: allow_extrap
         integer, intent(out), optional :: ierr
 
         integer nx1, nx2
@@ -188,19 +205,34 @@ contains
                     i2(i) = ii+1
                     exit
                 else if (x2(i) < x1(1)) then
-                    i1(i) = 1
-                    i2(i) = 2
+                    if (allow_extrap) then
+                        i1(i) = 1
+                        i2(i) = 2
+                    else
+                        i1(i) = 1
+                        i2(i) = 1
+                    end if
                     exit
                 else if (x2(i) >= x1(nx1)) then
-                    i1(i) = nx1-1
-                    i2(i) = nx1
+                    if (allow_extrap) then
+                        i1(i) = nx1-1
+                        i2(i) = nx1
+                    else
+                        i1(i) = nx1
+                        i2(i) = nx1
+                    end if
                     exit
                 end if
             end do
-            tmp1 = x1(i1(i))
-            tmp2 = x1(i2(i))
-            wgt1(i) = log(tmp2/x2(i))/log(tmp2/tmp1)
-            wgt2(i) = log(x2(i)/tmp1)/log(tmp2/tmp1)
+            if (i1(i) == i2(i)) then
+                wgt1(i) = 0.5d0
+                wgt2(i) = 0.5d0
+            else
+                tmp1 = x1(i1(i))
+                tmp2 = x1(i2(i))
+                wgt1(i) = log(tmp2/x2(i))/log(tmp2/tmp1)
+                wgt2(i) = log(x2(i)/tmp1)/log(tmp2/tmp1)
+            end if
         end do
 
         do i = 1, nx2

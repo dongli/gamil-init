@@ -19,12 +19,12 @@ module model_ic
     public model_ic_write
     public model_ic_file_name
 
+    public model_ic_allow_extrap
+
     type(var_list) model_vars
 
     real(8), pointer :: u(:,:,:), v(:,:,:), T(:,:,:), Q(:,:,:), p(:,:,:)
-
     real(8), pointer :: landfrac(:,:), phis(:,:), sgh(:,:), landm(:,:)
-
     real(8), pointer :: mslp(:,:), mslt(:,:), ps(:,:), ts(:,:)
 
     ! ??????????????????????????????????????????????????????????????????????????
@@ -32,6 +32,9 @@ module model_ic
     real(8), pointer :: cwat(:,:,:), snowhice(:,:), tsice(:,:)
     real(8), pointer :: ts1(:,:), ts2(:,:), ts3(:,:), ts4(:,:)
     ! ??????????????????????????????????????????????????????????????????????????
+
+    ! Control parameters
+    logical :: model_ic_allow_extrap = .true.
 
 contains
 
@@ -369,9 +372,9 @@ contains
         do j = 1, num_model_lat
             do i = 1, num_model_lon
                 if (uvtq_data_type == era_interim) then
-                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), u(i,j,:), 0)
+                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), u(i,j,:), model_ic_allow_extrap, 0)
                 else if (uvtq_data_type == model_data) then
-                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), u(i,j,:), 0)
+                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), u(i,j,:), model_ic_allow_extrap, 0)
                 end if
             end do
         end do
@@ -383,9 +386,9 @@ contains
         do j = 1, num_model_lat
             do i = 1, num_model_lon
                 if (uvtq_data_type == era_interim) then
-                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), v(i,j,:), 0)
+                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), v(i,j,:), model_ic_allow_extrap, 0)
                 else if (uvtq_data_type == model_data) then
-                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), v(i,j,:), 0)
+                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), v(i,j,:), model_ic_allow_extrap, 0)
                 end if
             end do
         end do
@@ -397,9 +400,9 @@ contains
         do j = 1, num_model_lat
             do i = 1, num_model_lon
                 if (uvtq_data_type == era_interim) then
-                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), T(i,j,:), 1)
+                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), T(i,j,:), model_ic_allow_extrap, 1)
                 else if (uvtq_data_type == model_data) then
-                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), T(i,j,:), 1)
+                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), T(i,j,:), model_ic_allow_extrap, 1)
                 end if
             end do
         end do
@@ -411,9 +414,9 @@ contains
         do j = 1, num_model_lat
             do i = 1, num_model_lon
                 if (uvtq_data_type == era_interim) then
-                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), Q(i,j,:), 0)
+                    call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), Q(i,j,:), model_ic_allow_extrap, 0)
                 else if (uvtq_data_type == model_data) then
-                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), Q(i,j,:), 0)
+                    call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), Q(i,j,:), model_ic_allow_extrap, 0)
                 end if
             end do
         end do
@@ -441,9 +444,9 @@ contains
             do j = 1, num_model_lat
                 do i = 1, num_model_lon
                     if (uvtq_data_type == era_interim) then
-                        call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), cwat(i,j,:), 0)
+                        call model_gears_interp_v(data_lev, tmp(i,j,:), p(i,j,:), cwat(i,j,:), model_ic_allow_extrap, 0)
                     else if (uvtq_data_type == model_data) then
-                        call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), cwat(i,j,:), 0)
+                        call model_gears_interp_v(tmp_p(i,j,:), tmp(i,j,:), p(i,j,:), cwat(i,j,:), model_ic_allow_extrap, 0)
                     end if
                 end do
             end do
