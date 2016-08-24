@@ -59,11 +59,7 @@ subroutine calc_model_grids(NX, NY)
 !   Note that: the physical mesh is not even, but the computing mesh is, which
 !   makes the meridional discretization easy.
 !
-    ! ??????????????????????????????????????????????????????????????????????????
-    ! Temporal codes:
-    integer ncid, dim_id, var_id, ierr, k
-    real(8), parameter :: cam_ref_ps = 1.0d5 ! Reference surface pressure (Pa)
-    ! ??????????????????????????????????????????????????????????????????????????
+    integer k
 
     ! --------------------------------------------------------------------------
     ! Set grid longitudes
@@ -153,21 +149,55 @@ subroutine calc_model_grids(NX, NY)
 
     ! --------------------------------------------------------------------------
     ! Set vertical grids.
-    ! ??????????????????????????????????????????????????????????????????????????
-    ! TODO: For the time being, we can just read the sigma coordinates from file
-    !       but we should use more elegant way to set them.
-    call report_warning(sub_name, "Read vertical sigma coordinates from file!")
+    model_vertical_coordinate_type = classic_sigma_pressure
+    num_model_lev = 26
+    call model_dims%append("lev", "", "", [num_model_lev])
+    call model_dims%get_tail_values(model_lev)
+    call model_dims%append("ilev", "", "", [num_model_lev+1])
+    call model_dims%get_tail_values(model_lev_bnds)
+    call model_dims_aux%append("pmtop", "model top pressure", "Pa")
+    call model_dims_aux%get_tail_values(model_pt)
 
-    call check_file_exist(sub_name, "./hybpara.26.nc")
+    model_pt = 219.406699761748d0
+    model_lev_bnds = [0.0d0,                 & !    2.19
+                      0.00270708138944839d0, & !    4.93
+                      0.00770525729190707d0, & !    9.98
+                      0.0158928127640089d0,  & !   18.26
+                      0.0277039568735249d0,  & !   30.20
+                      0.0425225717851423d0,  & !   45.18
+                      0.0595424438370873d0,  & !   62.38
+                      0.0764861789945283d0,  & !   79.51
+                      0.09037000846462d0,    & !   93.54
+                      0.106703636692459d0,   & !  110.06
+                      0.125919292600401d0,   & !  129.48
+                      0.148525517478954d0,   & !  152.33
+                      0.175120586853872d0,   & !  179.21
+                      0.206408247111974d0,   & !  210.84
+                      0.243216666654805d0,   & !  248.05
+                      0.286519798881535d0,   & !  291.82
+                      0.33746367336785d0,    & !  343.32
+                      0.397396487729323d0,   & !  403.90
+                      0.467904355709719d0,   & !  475.17
+                      !0.50937880241268d0,    &           ! lyy
+                      0.550853249115629d0,   & !  559.02
+                      !0.59964580831439d0,    &           ! lyy
+                      0.648438367513145d0,   & !  657.66
+                      !0.69612958037986d0,    &           ! lyy
+                      0.743820793246579d0,   & !  754.08
+                      !0.78723522009931d0,    &           ! lyy
+                      0.830649646952043d0,   & !  841.85
+                      !0.86686866218858d0,    &          ! dongli
+                      0.903087677425118d0,   & !  915.08
+                      !0.92949417598422d0,    &          ! dongli
+                      0.955900674543326d0,   & !  968.46
+                      !0.9704900640557d0,     &          ! dongli
+                      0.985079453568069d0,   & !  997.96
+                      1.0d0]                   ! 1013.04
+    do k = 1, num_model_lev
+      model_lev(k) = (model_lev_bnds(k) + model_lev_bnds(k+1)) * 0.5d0
+    end do
 
-    ierr = nf90_open("./hybpara.26.nc", nf90_nowrite, ncid)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ierr = nf90_inq_dimid(ncid, "lev", dim_id)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-    ierr = nf90_inquire_dimension(ncid, dim_id, len=num_model_lev)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
+    ! Set the equivalent hybrid coordinate coefficients.
     call model_dims_aux%append("P0", "reference pressure", "Pa")
     call model_dims_aux%get_tail_values(model_p0)
     call model_dims_aux%append("hyam", "hybrid A coefficient at layer midpoints", "1", [num_model_lev])
@@ -179,54 +209,11 @@ subroutine calc_model_grids(NX, NY)
     call model_dims_aux%append("hybi", "hybrid B coefficient at layer interfaces", "1", [num_model_lev+1])
     call model_dims_aux%get_tail_values(model_hybi)
 
-    ierr = nf90_inq_varid(ncid, "P0", var_id)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-    ierr = nf90_get_var(ncid, var_id, model_p0)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ierr = nf90_inq_varid(ncid, "hyam", var_id)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-    ierr = nf90_get_var(ncid, var_id, model_hyam)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ierr = nf90_inq_varid(ncid, "hybm", var_id)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-    ierr = nf90_get_var(ncid, var_id, model_hybm)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ierr = nf90_inq_varid(ncid, "hyai", var_id)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-    ierr = nf90_get_var(ncid, var_id, model_hyai)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ierr = nf90_inq_varid(ncid, "hybi", var_id)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-    ierr = nf90_get_var(ncid, var_id, model_hybi)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ierr = nf90_close(ncid)
-    call handle_netcdf_error(sub_name, __LINE__, ierr)
-
-    ! NOTICE: Although the vertical coordinate data in the file show itself as
-    !         hybrid sigma-pressure coordinate, it is classic sigma-pressure
-    !         coordinate in GAMIL currently!
-    model_vertical_coordinate_type = classic_sigma_pressure
-    call model_dims%append("lev", "", "", [num_model_lev])
-    call model_dims%get_tail_values(model_lev)
-    call model_dims%append("ilev", "", "", [num_model_lev+1])
-    call model_dims%get_tail_values(model_lev_bnds)
-    call model_dims_aux%append("pmtop", "model top pressure", "Pa")
-    call model_dims_aux%get_tail_values(model_pt)
-    ! Set the classic sigma-pressure coordinates from the read hybrid ones.
-    model_pt = model_hyai(1)*model_p0
-    model_lev_bnds(1) = 0.0d0
-    do k = 1, num_model_lev
-        model_lev_bnds(k+1) = (model_hyai(k+1)*cam_ref_ps+ &
-                               model_hybi(k+1)*model_p0-model_pt)/ &
-                              (model_p0-model_pt)
-        model_lev(k) = 0.5d0*(model_lev_bnds(k)+model_lev_bnds(k+1))
-    end do
-    ! ??????????????????????????????????????????????????????????????????????????
+    model_p0 = model_pt
+    model_hybm = model_lev
+    model_hyam = 1 - model_hybm
+    model_hybi = model_lev_bnds
+    model_hyai = 1 - model_hybi
 
     model_2d_dims = [num_model_lon,num_model_lat]
     model_3d_dims = [num_model_lon,num_model_lat,num_model_lev]

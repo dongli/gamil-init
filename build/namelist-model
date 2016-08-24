@@ -1,10 +1,13 @@
 &gamil_init_config
-model_grid_type                     = 1
+model_grid_type                     = 2
 num_model_lon                       = 128
-num_model_lat                       = 65
+num_model_lat                       = 60
+model_ic_allow_extrap               = .false.
 uvtq_data_file                      = "../data/new.si.ts.gamil.i.0011-01-01-00000.nc"
 uvtq_data_type                      = 2
 topo_data_file                      = "../data/topo.2min.nc"
 ozone_data_file                     = "N/A"
-aero_data_file                      = "N/A"
+!aero_data_file                      = "../data/aero_1.9x2.5_L26_1850-2009.nc"
+!sst_data_file                       = "../data/HadISST_sst.nc"
+!ice_data_file                       = "../data/HadISST_ice.nc"
 /

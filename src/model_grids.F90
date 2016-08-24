@@ -225,7 +225,7 @@ contains
         do k = 1, num_lev
             do j = 1, num_lat
                 do i = 1, num_lon
-                    p(i,j,k) = hya(k)*ps(i,j)+hyb(k)*p0
+                    p(i,j,k) = hya(k)*p0+hyb(k)*ps(i,j)
                 end do
             end do
         end do

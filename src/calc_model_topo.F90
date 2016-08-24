@@ -1,254 +1,240 @@
-subroutine calc_model_topo(NLONH, NLATH, ALONH, ALATH, OSH, &
-                           NLONM, NLATM, ALONM, ALATM, INDLS, &
-                           OSM, STDOSM)
+subroutine calc_model_topo(num_lon_topo, num_lat_topo, lon_topo, lat_topo, topo, &
+                           num_lon_model, num_lat_model, lon_model, lat_model, &
+                           landfrac, phis, sgh)
 
     implicit none
 
-    integer, intent(in) :: NLONH, NLATH
-    real(8), intent(in) :: ALONH(NLONH), ALATH(NLATH)
-    real(8), intent(in) :: OSH(NLONH,NLATH)
-    integer, intent(in) :: NLONM, NLATM
-    real(8), intent(in) :: ALONM(NLONM), ALATM(NLATM)
-    real(8), intent(inout) :: INDLS(NLONM,NLATM)
-    real(8), intent(inout) :: OSM(NLONM,NLATM)
-    real(8), intent(inout) :: STDOSM(NLONM,NLATM)
+    integer, intent(in) :: num_lon_topo, num_lat_topo
+    real(8), intent(in) :: lon_topo(num_lon_topo), lat_topo(num_lat_topo)
+    real(8), intent(in) :: topo(num_lon_topo,num_lat_topo)
+    integer, intent(in) :: num_lon_model, num_lat_model
+    real(8), intent(in) :: lon_model(num_lon_model), lat_model(num_lat_model)
+    real(8), intent(inout) :: landfrac(num_lon_model,num_lat_model)
+    real(8), intent(inout) :: phis(num_lon_model,num_lat_model)
+    real(8), intent(inout) :: sgh(num_lon_model,num_lat_model)
 
-    integer ixa(NLONM),ixb(NLONM),jya(NLATM),jyb(NLATM)
+    integer ix1(num_lon_model)
+    integer ix2(num_lon_model)
+    integer jy1(num_lat_model)
+    integer jy2(num_lat_model)
 
-    real*8 xm,xa,xb,xh,ym,ya,yb,yh,dy
-    real*8 osms,oshs,stdgs,stdms,anum,anuma,inds
+    real(8) lon1, lon2
+    real(8) lat1, lat2, dlat
+    real(8) phis0, landfrac0, sgh0, num_topo_grid, num_topo_grid0
 
-    integer i, j, k, l,ia,ib,ja,jb
+    integer i, j, k, l, i1, i2, j1, j2
 
-!   To obtain the indices of east-west boundary for boxes of model grids
+    ! To obtain the indices of east-west boundary for boxes of model grids
 
-    do i=1,NLONM
-       xm=ALONM(i)
+    do i = 1, num_lon_model
+        if (i == 1) then
+            lon1 = (lon_model(i) + lon_model(num_lon_model) - 360.0d0) * 0.5d0
+        else
+            lon1 = (lon_model(i) + lon_model(i-1)) * 0.5d0
+        end if
 
-       if (i.eq.1) then
-          xa=(xm+ALONM(NLONM)-360.0d0)*0.5d0
-       else
-          xa=(xm+ALONM(i-1))*0.5d0
-       endif
+        if (lon1 < lon_topo(1)) then
+            lon1 = lon1 + 360.0d0
+        end if
 
-       if (xa.lt.ALONH(1)) then
-          xa=xa+360.0d0
-       endif
+        if (i == num_lon_model) then
+            lon2 = (lon_model(i) + lon_model(1) + 360.0d0) * 0.5d0
+        else
+            lon2 = (lon_model(i) + lon_model(i+1)) * 0.5d0
+        end if
 
-       if (i.eq.NLONM) then
-          xb=(xm+ALONM(1)+360.0d0)*0.5d0
-       else
-          xb=(xm+ALONM(i+1))*0.5d0
-       endif
+        if (lon2 > lon_topo(num_lon_topo)) then
+            lon2 = lon2 - 360.0d0
+        end if
 
-       if (xb.gt.ALONH(NLONH)) then
-          xb=xb-360.0d0
-       endif
+        i1 = 0
+        i2 = 0
+        do k = 1, num_lon_topo
+            if (lon_topo(k) >= lon1 .and. i1 == 0) then
+                i1 = k
+            end if
+            if (lon_topo(k) >= lon2 .and. i2 == 0) then
+                i2 = k - 1
+            end if
+            if (i1 /= 0 .and. i2 /= 0) then
+                exit
+            end if
+        end do
 
-       ia=0
-       ib=0
-       do k=1,NLONH
-	  xh=ALONH(k)
-	  if ((xh.ge.xa).and.(ia.eq.0)) then
-	     ia=k
-	  endif
+        ix1(i) = i1
+        ix2(i) = i2
+    end do
 
-	  if ((xh.ge.xb).and.(ib.eq.0)) then
-	     ib=k-1
-         endif
-       enddo 
+    ! To obtain the indices of south-north boundary for boxes of model grids
 
-       ixa(i)=ia
-       ixb(i)=ib
-    enddo
+    do j = 2, num_lat_model - 1
+        lat1 = (lat_model(j) + lat_model(j-1))*0.5d0
+        lat2 = (lat_model(j) + lat_model(j+1))*0.5d0
 
-!   do i=1,NLONM
-!      print *,i,ixa(i),ixb(i)
-!      print *,alonh(ixa(i)),alonm(i),alonh(ixb(i))
-!   enddo
-!   stop
+        dlat = (lat2 - lat1) * 0.5d0
 
-!   To obtain the indices of south-north boundary for boxes of model grids
+        lat1 = lat_model(j) - dlat
+        lat2 = lat_model(j) + dlat
 
-    do j=2,NLATM-1
-       ym=ALATM(j)
+        j1 = 0
+        j2 = 0
+        do k = 1, num_lat_topo
+            if (lat_topo(k) >= lat1 .and. j1 == 0) then
+                j1 = k
+            end if
 
-       ya=(ym+ALATM(j-1))*0.5d0
-       yb=(ym+ALATM(j+1))*0.5d0
+            if (lat_topo(k) >= lat2 .and. j2 == 0) then
+                j2 = k - 1
+            end if
 
-       dy=(yb-ya)*0.5d0
+            if (j1 /= 0 .and. j2 /= 0) then
+                exit
+            end if
+        end do
 
-       ya=ym-dy
-       yb=ym+dy
+        jy1(j) = j1
+        jy2(j) = j2
+    end do
 
-       ja=0
-       jb=0
-       do k=1,NLATH
-	  yh=ALATH(k)
-	  if ((yh.ge.ya).and.(ja.eq.0)) then
-	     ja=k
-	  endif
+    jy1(1) = 1
+    jy2(1) = jy1(2) - 1
 
-	  if ((yh.ge.yb).and.(jb.eq.0)) then
-	     jb=k-1
-	  endif
-       enddo 
-
-       jya(j)=ja
-       jyb(j)=jb
-    enddo
-
-    jya(1)=1
-    jyb(1)=jya(2)-1
-
-    jya(NLATM)=jyb(NLATM-1)+1
-    jyb(NLATM)=NLATH
+    jy1(num_lat_model) = jy2(num_lat_model-1) + 1
+    jy2(num_lat_model) = num_lat_topo
  
-!   do j=1,NLATM
-!      print *,j,jya(j),jyb(j)
-!      print *,alath(jya(j)),alatm(j),alath(jyb(j))
-!   enddo
-!   stop
+    ! To calculate the averaged terrain of the model grid box as the model terrain,
+    ! the corresponding standard deviation, and the land-sea mask
 
-!   To calculate the averaged terrain of the model grid box as the model terrain,
-!   the corresponding standard deviation, and the land-sea mask
+    ! For the region excluding the poles
+    do j = 2, num_lat_model - 1
+        j1 = jy1(j)
+        j2 = jy2(j)
 
-!   For the region excluding the poles
+       if (ix1(1) > ix2(1)) then
+            ! Split into two parts
+            i1 = 1
+            i2 = ix2(1)
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(1,j)      = phis0
+            landfrac(1,j)  = landfrac0
+            sgh(1,j)       = sgh0
+            num_topo_grid0 = num_topo_grid
 
-    do j=2,NLATM-1
-       ja=jya(j)
-       jb=jyb(j)
+            i1 = ix1(1)
+            i2 = num_lon_topo
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(1,j)      = phis(1,j)     + phis0
+            landfrac(1,j)  = landfrac(1,j) + landfrac0
+            sgh(1,j)       = sgh(1,j)      + sgh0
+            num_topo_grid0 = num_topo_grid + num_topo_grid0
 
-       if (ixa(1).gt.ixb(1)) then
-          ia=1
-          ib=ixb(1)
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(1,j)=osms
-          INDLS(1,j)=inds
-          STDOSM(1,j)=stdms
-          anuma=anum
+            phis(1,j)     = phis(1,j)      / num_topo_grid0
+            landfrac(1,j) = landfrac(1,j)  / num_topo_grid0
+            sgh(1,j)      = dsqrt(sgh(1,j) / num_topo_grid0)
+        else
+            i1 = ix1(1)
+            i2 = ix2(1)
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(1,j)     = phis0      / num_topo_grid
+            landfrac(1,j) = landfrac0  / num_topo_grid
+            sgh(1,j)      = dsqrt(sgh0 / num_topo_grid)
+        end if
 
-          ia=ixa(1)
-          ib=NLONH
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(1,j)=osms+OSM(1,j)
-          INDLS(1,j)=inds+INDLS(1,j)
-          STDOSM(1,j)=stdms+STDOSM(1,j)
-          anuma=anum+anuma
+        do i = 2, num_lon_model - 1
+            i1 = ix1(i)
+            i2 = ix2(i)
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(i,j)     = phis0      / num_topo_grid
+            landfrac(i,j) = landfrac0  / num_topo_grid
+            sgh(i,j)      = dsqrt(sgh0 / num_topo_grid)
+        end do
 
-          OSM(1,j)=OSM(1,j)/anuma
-          INDLS(1,j)=INDLS(1,j)/anuma
-          STDOSM(1,j)=dsqrt(STDOSM(1,j)/anuma)
-       else
-	  ia=ixa(1)
-          ib=ixb(1)
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(1,j)=osms/anum
-          INDLS(1,j)=inds/anum
-          STDOSM(1,j)=dsqrt(stdms/anum)
-       endif
+        if (ix1(num_lon_model) > ix2(num_lon_model)) then
+            i1 = 1
+            i2 = ix2(num_lon_model)
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(num_lon_model,j)     = phis0
+            landfrac(num_lon_model,j) = landfrac0
+            sgh(num_lon_model,j)      = sgh0
+            num_topo_grid0            = num_topo_grid
 
-       do i=2,NLONM-1
-	  ia=ixa(i)
-          ib=ixb(i)
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(i,j)=osms/anum
-          INDLS(i,j)=inds/anum
-          STDOSM(i,j)=dsqrt(stdms/anum)
-       enddo
+            i1 = ix1(1)
+            i2 = num_lon_topo
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(num_lon_model,j)     = phis(num_lon_model,j)     + phis0
+            landfrac(num_lon_model,j) = landfrac(num_lon_model,j) + landfrac0
+            sgh(num_lon_model,j)      = sgh(num_lon_model,j)      + sgh0
+            num_topo_grid0            = num_topo_grid + num_topo_grid0
 
-       if (ixa(NLONM).gt.ixb(NLONM)) then
-          ia=1
-          ib=ixb(NLONM)
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(NLONM,j)=osms
-          INDLS(NLONM,j)=inds
-          STDOSM(NLONM,j)=stdms
-          anuma=anum
+            phis(num_lon_model,j)     = phis(num_lon_model,j)      / num_topo_grid0
+            landfrac(num_lon_model,j) = landfrac(num_lon_model,j)  / num_topo_grid0
+            sgh(num_lon_model,j)      = dsqrt(sgh(num_lon_model,j) / num_topo_grid0)
+        else
+            i1 = ix1(num_lon_model)
+            i2 = ix2(num_lon_model)
+            call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+            phis(num_lon_model,j)     = phis0      / num_topo_grid
+            landfrac(num_lon_model,j) = landfrac0  / num_topo_grid
+            sgh(num_lon_model,j)      = dsqrt(sgh0 / num_topo_grid)
+        end if
+    end do
 
-          ia=ixa(1)
-          ib=NLONH
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(NLONM,j)=osms+OSM(NLONM,j)
-          INDLS(NLONM,j)=inds+INDLS(NLONM,j)
-          STDOSM(NLONM,j)=stdms+STDOSM(NLONM,j)
-          anuma=anum+anuma
+    ! For the poles
 
-          OSM(NLONM,j)=OSM(NLONM,j)/anuma
-          INDLS(NLONM,j)=INDLS(NLONM,j)/anuma
-          STDOSM(NLONM,j)=dsqrt(STDOSM(NLONM,j)/anuma)
-       else
-	  ia=ixa(NLONM)
-          ib=ixb(NLONM)
-          call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-          OSM(NLONM,j)=osms/anum
-          INDLS(NLONM,j)=inds/anum
-          STDOSM(NLONM,j)=dsqrt(stdms/anum)
-       endif
-    enddo 
-
-!   For the poles
-
-    do j=1,NLATM,NLATM-1
-       ja=jya(j)
-       jb=jyb(j)
+    do j=1, num_lat_model, num_lat_model - 1
+        j1 = jy1(j)
+        j2 = jy2(j)
     
-       ia=1
-       ib=NLONH
-       call termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-       osms=osms/anum
-       inds=inds/anum
-       stdms=stdms/anum
+        i1 = 1
+        i2 = num_lon_topo
+        call termask(phis0, sgh0, landfrac0, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+        phis0     = phis0     / num_topo_grid
+        landfrac0 = landfrac0 / num_topo_grid
+        sgh0      = sgh0      / num_topo_grid
 
-       do i=1,NLONM
-          OSM(i,j)=osms
-          INDLS(i,j)=inds
-          STDOSM(i,j)=dsqrt(stdms)
-       enddo
-    enddo 
-
-!   do j=1,NLATM
-!      do i=1,NLONM
-!         print *,j,i,real(OSM(i,j)),real(INDLS(i,j)),real(STDOSM(i,j))
-!      enddo
-!   enddo
-!   stop
+        do i = 1, num_lon_model
+            phis(i,j)     = phis0
+            landfrac(i,j) = landfrac0
+            sgh(i,j)      = dsqrt(sgh0)
+        end do
+    end do
 
     return
 
 end subroutine calc_model_topo
 
-subroutine termask(osms,stdms,inds,anum,ia,ib,ja,jb,OSH,NLONH,NLATH)
-    integer, intent(in) :: NLONH, NLATH
-    real(8), intent(in) :: OSH(NLONH,NLATH)
+subroutine termask(phis, sgh, landfrac, num_topo_grid, i1, i2, j1, j2, topo, num_lon_topo, num_lat_topo)
+    integer, intent(in) :: i1, i2, j1, j2, num_lon_topo, num_lat_topo
+    real(8), intent(in) :: topo(num_lon_topo,num_lat_topo)
 
-    real*8 osms,osmm,oshs,stdgs,stdms,anum,inds
+    real(8), intent(out) :: phis, sgh, landfrac, num_topo_grid
+    real(8) osmm, oshs, stdgs
 
-    integer k, l,ia,ib,ja,jb
+    integer k, l
 
-    osms=0.0d0
-    inds=0.0d0
-    anum=0.0d0
-    do k=ja,jb
-       do l=ia,ib
-          if (OSH(l,k).gt.0.0d0) then
-             osms=osms+OSH(l,k)
-             inds=inds+1.0d0
-          endif
-          anum=anum+1.0d0
-       enddo
-    enddo
-    osmm=osms/anum
+    phis          = 0.0d0
+    landfrac      = 0.0d0
+    num_topo_grid = 0.0d0
+    do k = j1, j2
+        do l = i1, i2
+            if (topo(l,k) > 0.0d0) then
+                phis     = phis     + topo(l,k)
+                landfrac = landfrac + 1.0d0
+            end if
+            num_topo_grid = num_topo_grid + 1.0d0
+        end do
+    end do
+    osmm = phis / num_topo_grid
 
-    stdms=0.0d0
-    do k=ja,jb
-       do l=ia,ib
-          oshs=OSH(l,k)
-          if (oshs.le.0.0d0) oshs=0.0
-          stdgs=oshs-osmm
-          stdms=stdms+stdgs*stdgs
-       enddo
-    enddo
+    sgh = 0.0d0
+    do k = j1, j2
+        do l = i1, i2
+            oshs = topo(l,k)
+            if (oshs <= 0.0d0) oshs = 0.0
+            stdgs = oshs - osmm
+            sgh = sgh + stdgs * stdgs
+        end do
+    end do
 
     return
 
