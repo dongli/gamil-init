@@ -171,10 +171,10 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
    call wrap_nf_open (trim(sstfilein), nf_nowrite, ncidsstin)
    call wrap_nf_open (trim(icefilein), nf_nowrite, ncidicein)
 
-   call wrap_nf_inq_dimid (ncidsstin, 'longitude', londimidin)
+   call wrap_nf_inq_dimid (ncidsstin, 'lon', londimidin)
    call wrap_nf_inq_dimlen (ncidsstin, londimidin, plonin)
 
-   call wrap_nf_inq_dimid (ncidsstin, 'latitude', latdimidin)
+   call wrap_nf_inq_dimid (ncidsstin, 'lat', latdimidin)
    call wrap_nf_inq_dimlen (ncidsstin, latdimidin, nlatin)
 
    call wrap_nf_inq_dimid (ncidsstin, 'time', timedimidin)
@@ -182,14 +182,14 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
 !
 ! Ensure ice file dims match those of sst
 !
-   call wrap_nf_inq_dimid (ncidicein, 'longitude', londimidicein)
+   call wrap_nf_inq_dimid (ncidicein, 'lon', londimidicein)
    call wrap_nf_inq_dimlen (ncidicein, londimidicein, plonicein)
    if (plonin /= plonicein) then
       write(6,*)'longitude dim mismatch sst vs ice:',plonin,plonicein
       call err_exit ('regrid')
    end if
 
-   call wrap_nf_inq_dimid (ncidicein, 'latitude', latdimidicein)
+   call wrap_nf_inq_dimid (ncidicein, 'lat', latdimidicein)
    call wrap_nf_inq_dimlen (ncidicein, latdimidicein, nlaticein)
    if (nlatin /= nlaticein) then
       write(6,*)'latitude dim mismatch sst vs ice:',nlatin,nlaticein
@@ -217,12 +217,12 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
 !
 ! Read needed grid info and variables from 1x1 files
 !
-   call wrap_nf_inq_varid (ncidsstin, 'longitude', lonidin)
-   call wrap_nf_inq_varid (ncidsstin, 'latitude', latidin)
+   call wrap_nf_inq_varid (ncidsstin, 'lon', lonidin)
+   call wrap_nf_inq_varid (ncidsstin, 'lat', latidin)
    call wrap_nf_inq_varid (ncidsstin, 'time', timeidin)
    call wrap_nf_inq_varid (ncidicein, 'time', timeidicein)  ! to compare to sst
-   call wrap_nf_inq_varid (ncidsstin, 'sst', sstidin)
-   call wrap_nf_inq_varid (ncidicein, 'sic', iceidin)
+   call wrap_nf_inq_varid (ncidsstin, 'tos', sstidin)
+   call wrap_nf_inq_varid (ncidicein, 'siconc', iceidin)
 
    ! Determine format of time variable in 1x1 files.
    ! Old format was 'YYYYMMDD', new format is "days since ..."
@@ -284,8 +284,8 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
 !
 ! Get fillvalues for ice and sst
 !
-   call wrap_nf_get_att_double (ncidsstin, sstidin, '_FillValue', fillvaluesst)
-   call wrap_nf_get_att_double (ncidicein, iceidin, '_FillValue', fillvalueice)
+   !call wrap_nf_get_att_double (ncidsstin, sstidin, '_FillValue', fillvaluesst)
+   !call wrap_nf_get_att_double (ncidicein, iceidin, '_FillValue', fillvalueice)
 !
 ! Define history attribute.
 !
@@ -321,11 +321,11 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
 
    call wrap_nf_copy_att (ncidsstin, sstidin, 'long_name', ncidout, sstidout)
    call wrap_nf_copy_att (ncidsstin, sstidin, 'units',     ncidout, sstidout)
-   call wrap_nf_put_att_real (ncidout, sstidout, '_FillValue', NF_FLOAT, 1, fillvalueout)
+   !call wrap_nf_put_att_real (ncidout, sstidout, '_FillValue', NF_FLOAT, 1, fillvalueout)
 
    call wrap_nf_copy_att (ncidicein, iceidin, 'long_name', ncidout, iceidout)
    call wrap_nf_put_att_text (ncidout, iceidout, 'units', '1')
-   call wrap_nf_put_att_real (ncidout, iceidout, '_FillValue', NF_FLOAT, 1, fillvalueout)
+   !call wrap_nf_put_att_real (ncidout, iceidout, '_FillValue', NF_FLOAT, 1, fillvalueout)
 
 !
 ! Set longitude values for output grid (check for reduced grid)
@@ -500,6 +500,10 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
          startin(3) = n
          call wrap_nf_get_vara_double (ncidsstin, sstidin, startin, kountin, sstin)
          call wrap_nf_get_vara_double (ncidicein, iceidin, startin, kountin, icefracin)
+! Turn Kelvin to Degree Celsius
+         where (sstin(:,:) /= fillvaluesst)
+            sstin(:,:) = sstin(:,:) - 273.15
+         end where
 !
 ! Turn percentage into fraction
 !

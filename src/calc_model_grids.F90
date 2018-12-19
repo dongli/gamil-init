@@ -1,4 +1,4 @@
-subroutine calc_model_grids(NX, NY)
+subroutine calc_model_grids(NX, NY, B)
 
     use utils
     use constants
@@ -6,6 +6,7 @@ subroutine calc_model_grids(NX, NY)
     implicit none
 
     integer, intent(in) :: NX, NY
+    real(8), intent(in) :: B ! A CONTROL PARAMETER RELATED TO THE MERIDIONAL RESOLUTION
 
     character(50), parameter :: sub_name = "calc_model_grids"
 
@@ -19,7 +20,6 @@ subroutine calc_model_grids(NX, NY)
 !     4) WORKING VARIABLES: U,S,DA,A2,U2,A,B,J,M1
 !
     real(8) AS ! AREA SIZE WITH RESPECT TO LATITUDE
-    real(8) B  ! A CONTROL PARAMETER RELATED TO THE MERIDIONAL RESOLUTION
 !
 ! The resolution formula:
 !
@@ -96,7 +96,6 @@ subroutine calc_model_grids(NX, NY)
     else if (model_grid_type == even_area_grid) then
         call notice(sub_name, "GAMIL grid is even-area grid")
         M1= NY-1
-        B = 2
         A  = B*2.0D0/PI
         A2 = A*2.0D0
         DA = 1.0D0/A

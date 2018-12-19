@@ -26,7 +26,8 @@ program gamil_init
         aero_data_file, sst_data_file,   &
         ice_data_file, &
         ! Some control parameters from modules
-        model_ic_allow_extrap
+        model_ic_allow_extrap, &
+        latmesh_B
 
     if (command_argument_count() /= 1) then
         call print_usage
@@ -41,7 +42,7 @@ program gamil_init
     if (model_grid_file /= "N/A") then
         call model_grids_read(model_grid_file)
     else
-        call calc_model_grids(num_model_lon, num_model_lat)
+        call calc_model_grids(num_model_lon, num_model_lat, latmesh_B)
     end if
 
     if (uvtq_data_file /= "N/A") then

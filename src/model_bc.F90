@@ -55,8 +55,8 @@ contains
         call notice(sub_name, "Correct month mean")
 
         call pcmdi_bcgen(tmp_file, clm_file, file_name, &
-                         1, 1951, 12, 2012, 1, 1951, 12, 2012, &
-                         1, 1974, 12, 2010, 1, 1974, 12, 2010)
+                         1, 1870, 12, 2015, 1, 1870, 12, 2015, &
+                         1, 1870, 12, 2015, 1, 1870, 12, 2015)
 
         call notice(sub_name, "File "//trim(file_name)//" has been generated")
 
