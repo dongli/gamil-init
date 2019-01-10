@@ -62,7 +62,7 @@ contains
         integer pmtop_var_id
         integer ierr
 
-        character(30), parameter :: sub_name = "model_grids_read"
+        character(*), parameter :: sub_name = "model_grids_read"
 
         call notice(sub_name, "Read GAMIL grid dimension information")
 
@@ -134,15 +134,125 @@ contains
 
     end subroutine model_grids_read
 
-    subroutine model_grids_write(file_name)
+    subroutine model_grids_write
 
-        character(*), intent(in) :: file_name
+        integer ncid, ierr, i, j, k
+        integer grid_rank_dimid
+        integer grid_size_dimid
+        integer grid_corners_dimid
+        integer grid_dims_varid
+        integer grid_imask_varid
+        integer grid_center_lon_varid
+        integer grid_center_lat_varid
+        integer grid_corner_lon_varid
+        integer grid_corner_lat_varid
 
-        integer file_idx
+        integer, allocatable :: grid_imask(:)
+        real(8), allocatable :: grid_center_lon(:)
+        real(8), allocatable :: grid_center_lat(:)
+        real(8), allocatable :: grid_corner_lon(:,:)
+        real(8), allocatable :: grid_corner_lat(:,:)
 
-        call io_manager_create_file(file_name, file_idx)
-        call model_grids_add_dims(file_idx)
-        call io_manager_close_file(file_idx)
+        character(30) file_name
+        character(*), parameter :: sub_name = "model_grids_write"
+
+        file_name = "grid.gamil." // trim(to_string(num_model_lon)) // "x" // trim(to_string(num_model_lat)) // ".nc"
+
+        ! Write out a SCRIP format data for generating mapping files.
+        ierr = nf90_create(file_name, nf90_clobber, ncid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_dim(ncid, "grid_rank", 2, grid_rank_dimid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_dim(ncid, "grid_size", num_model_lon * num_model_lat, grid_size_dimid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_dim(ncid, "grid_corners", 4, grid_corners_dimid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_var(ncid, "grid_dims", nf90_int, [grid_rank_dimid], grid_dims_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_var(ncid, "grid_imask", nf90_int, [grid_size_dimid], grid_imask_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_att(ncid, grid_imask_varid, "units", "unitless")
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_var(ncid, "grid_center_lon", nf90_double, [grid_size_dimid], grid_center_lon_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_att(ncid, grid_center_lon_varid, "units", "degrees")
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_var(ncid, "grid_center_lat", nf90_double, [grid_size_dimid], grid_center_lat_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_att(ncid, grid_center_lat_varid, "units", "degrees")
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_var(ncid, "grid_corner_lon", nf90_double, [grid_corners_dimid,grid_size_dimid], grid_corner_lon_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_att(ncid, grid_corner_lon_varid, "units", "degrees")
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_def_var(ncid, "grid_corner_lat", nf90_double, [grid_corners_dimid,grid_size_dimid], grid_corner_lat_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_att(ncid, grid_corner_lat_varid, "units", "degrees")
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_enddef(ncid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_var(ncid, grid_dims_varid, [num_model_lon, num_model_lat])
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        allocate(grid_imask(num_model_lon * num_model_lat))
+        allocate(grid_center_lon(num_model_lon * num_model_lat))
+        allocate(grid_center_lat(num_model_lon * num_model_lat))
+        allocate(grid_corner_lon(4,num_model_lon * num_model_lat))
+        allocate(grid_corner_lat(4,num_model_lon * num_model_lat))
+
+        grid_imask(:) = 1
+        k = 1
+        do j = 1, num_model_lat
+            do i = 1, num_model_lon
+                grid_center_lon(k) = model_lon(i)
+                grid_center_lat(k) = model_lat(j)
+                grid_corner_lon(:,k) = [model_lon_bnds(i),model_lon_bnds(i+1),model_lon_bnds(i+1),model_lon_bnds(i)]
+                grid_corner_lat(:,k) = [model_lat_bnds(j),model_lat_bnds(j),model_lat_bnds(j+1),model_lat_bnds(j+1)]
+                k = k + 1
+            end do
+        end do
+
+        ierr = nf90_put_var(ncid, grid_imask_varid, grid_imask_varid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_var(ncid, grid_center_lon_varid, grid_center_lon)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_var(ncid, grid_center_lat_varid, grid_center_lat)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_var(ncid, grid_corner_lon_varid, grid_corner_lon)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_put_var(ncid, grid_corner_lat_varid, grid_corner_lat)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        ierr = nf90_close(ncid)
+        call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        deallocate(grid_imask)
+        deallocate(grid_center_lon)
+        deallocate(grid_center_lat)
+        deallocate(grid_corner_lon)
+        deallocate(grid_corner_lat)
+
+        call notice(sub_name, "File "//trim(file_name)//" has been generated")
 
     end subroutine model_grids_write
 

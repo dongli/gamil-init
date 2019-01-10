@@ -50,6 +50,7 @@ program gamil_init
         call model_ic_calc_topo(topo_data_file)
         call model_ic_interp
         call model_ic_write
+        call model_grids_write
     end if
 
     if (aero_data_file /= "N/A") then
