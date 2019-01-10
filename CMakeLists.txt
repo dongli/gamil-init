@@ -2,7 +2,9 @@ cmake_minimum_required (VERSION 2.8)
 
 project (gamil-init Fortran)
 
-set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
+if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    set (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -ffree-line-length-none")
+endif ()
 
 list (APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
 find_package (NETCDF REQUIRED COMPONENTS Fortran)

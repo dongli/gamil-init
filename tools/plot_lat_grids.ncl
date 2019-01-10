@@ -4,10 +4,7 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
 
 begin
 
-    file_names = (/"ic.gamil.360x154x26.0011-01-01-00000.nc", \
-                   "ic.gamil.720x308x26.0011-01-01-00000.nc", \
-                   "ic.gamil.1440x616x26.0011-01-01-00000.nc", \
-                   "ic.gamil.2880x1232x26.0011-01-01-00000.nc"/)
+    file_names = systemfunc("ls ic.gamil.*")
     f = addfiles(file_names, "r")
 
     wks = gsn_open_wks("pdf", "lat_grids")

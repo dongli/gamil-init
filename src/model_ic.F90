@@ -52,17 +52,20 @@ contains
         real(8), allocatable :: topo_lon(:), topo_lat(:)
         real(8), allocatable :: topo(:,:)
 
+        integer i, i0, j
+        real(8), allocatable :: tmp(:,:)
+
         call notice(sub_name, "Calculate GAMIL topography")
 
         ierr = nf90_open(topo_file, nf90_nowrite, ncid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        ierr = nf90_inq_dimid(ncid, "lon", dim_id)
+        ierr = nf90_inq_dimid(ncid, "x", dim_id)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
         ierr = nf90_inquire_dimension(ncid, dim_id, len=num_topo_lon)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        ierr = nf90_inq_dimid(ncid, "lat", dim_id)
+        ierr = nf90_inq_dimid(ncid, "y", dim_id)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
         ierr = nf90_inquire_dimension(ncid, dim_id, len=num_topo_lat)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
@@ -71,20 +74,61 @@ contains
         allocate(topo_lat(num_topo_lat))
         allocate(topo(num_topo_lon,num_topo_lat))
 
-        ierr = nf90_inq_varid(ncid, "lon", var_id)
+        ierr = nf90_inq_varid(ncid, "x", var_id)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
         ierr = nf90_get_var(ncid, var_id, topo_lon)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        ierr = nf90_inq_varid(ncid, "lat", var_id)
+        ierr = nf90_inq_varid(ncid, "y", var_id)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
         ierr = nf90_get_var(ncid, var_id, topo_lat)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
-        ierr = nf90_inq_varid(ncid, "htopo", var_id)
+        ierr = nf90_inq_varid(ncid, "z", var_id)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
         ierr = nf90_get_var(ncid, var_id, topo)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
+
+        if (count(topo_lon < 0) > 0) then
+            ! Change longitude range to 0-360.
+            do i = 1, num_topo_lon
+                ! Find out the meridian line.
+                if (topo_lon(i) >= 0 .or. abs(topo_lon(i)) < 1.0e-10) then
+                    i0 = i
+                    exit
+                end if
+            end do
+            if (abs(topo_lon(1) + 360 - topo_lon(num_topo_lon)) < 1.0e-14) then
+                ! Data is cyclic along longitude, remove the duplicate values.
+                allocate(tmp(num_topo_lon-1,num_topo_lat))
+                tmp(:num_topo_lon-i0,1) = topo_lon(i0:num_topo_lon-1)
+                tmp(num_topo_lon-i0+1:,1) = topo_lon(1:i0-1)
+                deallocate(topo_lon)
+                allocate(topo_lon(num_topo_lon-1))
+                topo_lon(:) = tmp(:,1)
+                where (topo_lon < 0 .and. abs(topo_lon) > 1.0e-10)
+                    topo_lon = topo_lon + 360.0
+                end where
+                tmp(:num_topo_lon-i0,:) = topo(i0:num_topo_lon-1,:)
+                tmp(num_topo_lon-i0+1:,:) = topo(1:i0-1,:)
+                deallocate(topo)
+                allocate(topo(num_topo_lon-1,num_topo_lat))
+                topo(:,:) = tmp(:,:)
+                num_topo_lon = num_topo_lon - 1
+            else
+                allocate(tmp(num_topo_lon,num_topo_lat))
+                tmp(:num_topo_lon-i0+1,1) = topo_lon(i0:)
+                tmp(num_topo_lon-i0+2:,1) = topo_lon(:i0-1)
+                topo_lon(:) = tmp(:,1)
+                where (topo_lon < 0 .and. abs(topo_lon) > 1.0e-10)
+                    topo_lon = topo_lon + 360.0
+                end where
+                tmp(:num_topo_lon-i0+1,:) = topo(i0:,:)
+                tmp(num_topo_lon-i0+2:,:) = topo(:i0-1,:)
+                topo(:,:) = tmp(:,:)
+            end if
+            deallocate(tmp)
+        end if
 
         ierr = nf90_close(ncid)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
@@ -103,6 +147,10 @@ contains
 
         ! change the unit of phis to m2 s-2
         phis = phis*g
+
+        deallocate(topo_lon)
+        deallocate(topo_lat)
+        deallocate(topo)
 
     end subroutine model_ic_calc_topo
 
