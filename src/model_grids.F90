@@ -228,7 +228,7 @@ contains
             end do
         end do
 
-        ierr = nf90_put_var(ncid, grid_imask_varid, grid_imask_varid)
+        ierr = nf90_put_var(ncid, grid_imask_varid, grid_imask)
         call handle_netcdf_error(sub_name, __LINE__, ierr)
 
         ierr = nf90_put_var(ncid, grid_center_lon_varid, grid_center_lon)
