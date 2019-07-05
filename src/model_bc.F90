@@ -2,6 +2,7 @@ module model_bc
 
     use utils
     use model_grids
+    use namelist_mod
 
     implicit none
 
@@ -11,22 +12,16 @@ module model_bc
     public model_bc_interp
     public model_bc_correct
 
-    character(300) sst_data_file
-    character(300) ice_data_file
     character(300) grid_file
     character(300) tmp_file
     character(300) clm_file
 
 contains
 
-    subroutine model_bc_init(sst_data_file_, ice_data_file_, grid_file_)
+    subroutine model_bc_init(grid_file_)
 
-        character(*), intent(in) :: sst_data_file_
-        character(*), intent(in) :: ice_data_file_
         character(*), intent(in) :: grid_file_
 
-        sst_data_file = sst_data_file_
-        ice_data_file = ice_data_file_
         grid_file = grid_file_
         tmp_file = "sstice.tmp.nc"
         clm_file = "sstice.clm.nc"
@@ -40,6 +35,11 @@ contains
         call notice(sub_name, "Interpolation SST and sea ice data onto model grids")
 
         call pcmdi_regrid(sst_data_file, ice_data_file, grid_file, tmp_file)
+
+        if (.not. correct_sst_sice) then
+            call execute_command_line('mv ' // trim(tmp_file) // ' ' // model_bc_file_name())
+            call notice(sub_name, "File " // trim(model_bc_file_name()) // " has been generated")
+        end if
 
     end subroutine model_bc_interp
 

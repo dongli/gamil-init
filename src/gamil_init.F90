@@ -1,5 +1,6 @@
 program gamil_init
 
+    use namelist_mod
     use model_grids
     use source_data
     use model_ic
@@ -8,32 +9,13 @@ program gamil_init
 
     implicit none
 
-    character(300) :: model_grid_file = "N/A"
-    character(300) :: uvtq_data_file  = "N/A"
-    character(300) :: ozone_data_file = "N/A"
-    character(300) :: aero_data_file = "N/A"
-    character(300) :: topo_data_file  = "N/A"
-    character(300) :: sst_data_file = "N/A"
-    character(300) :: ice_data_file = "N/A"
-
     character(300) namelist_file
-
-    namelist /gamil_init_config/ &
-        num_model_lon, num_model_lat,    &
-        model_grid_type, uvtq_data_type, &
-        model_grid_file, uvtq_data_file, &
-        ozone_data_file, topo_data_file, &
-        aero_data_file, sst_data_file,   &
-        ice_data_file, &
-        ! Some control parameters from modules
-        model_ic_allow_extrap, &
-        latmesh_B
 
     if (command_argument_count() /= 1) then
         call print_usage
         stop
     end if
-    call get_command_argument(1,namelist_file)
+    call get_command_argument(1, namelist_file)
 
     open(10, file=namelist_file, status="old")
     read(10, nml=gamil_init_config)
@@ -60,9 +42,9 @@ program gamil_init
     end if
 
     if (sst_data_file /= "N/A") then
-        call model_bc_init(sst_data_file, ice_data_file, model_ic_file_name())
+        call model_bc_init(model_ic_file_name())
         call model_bc_interp
-        call model_bc_correct
+        if (correct_sst_sice) call model_bc_correct
     end if
 
 contains

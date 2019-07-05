@@ -6,6 +6,7 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
 !
 !----------------------------------------------------------------------------------
    use precision
+   use datetime
 
    implicit none
 
@@ -25,7 +26,7 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
    character(len=3)   :: time_coord = 'old'  ! 'new' or 'old'
 
    logical :: uselandmask = .false.     ! Flag says to use input land mask (no longer used)
-   logical :: verbose = .false.         ! Add print statements
+   logical :: verbose = .true.          ! Add print statements
    logical :: linear_interp             ! Flag to do linear interpolation vs. area averaging
    logical :: usr_specified_interp = .false. ! Whether cmd-line interp type specified
    logical :: scatterplots = .false.    ! Turn on for scatter plots
@@ -123,6 +124,7 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
    real(r8), allocatable :: latin(:)      ! latitude on input grid (degrees)
    real(r8), allocatable :: sstin(:,:)    ! mixed layer depths on input grid
    real(r8), allocatable :: icefracin(:,:)! ice fraction on input grid
+   type(datetime_type) base_time, curr_time
 !
 ! Data on output grid
 !
@@ -221,8 +223,8 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
    call wrap_nf_inq_varid (ncidsstin, 'lat', latidin)
    call wrap_nf_inq_varid (ncidsstin, 'time', timeidin)
    call wrap_nf_inq_varid (ncidicein, 'time', timeidicein)  ! to compare to sst
-   call wrap_nf_inq_varid (ncidsstin, 'tos', sstidin)
-   call wrap_nf_inq_varid (ncidicein, 'siconc', iceidin)
+   call wrap_nf_inq_varid (ncidsstin, 'tosbcs', sstidin)
+   call wrap_nf_inq_varid (ncidicein, 'siconcbcs', iceidin)
 
    ! Determine format of time variable in 1x1 files.
    ! Old format was 'YYYYMMDD', new format is "days since ..."
@@ -230,8 +232,10 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
    if (units_att(1:10) == 'days since') time_coord = 'new'
 
    ! If 1x1 files use new time units, then get the date info from the date variable
-   if (time_coord == 'new') then
+   if (time_coord == 'old') then
       call wrap_nf_inq_varid (ncidsstin, 'date', dateidin)
+   else
+      base_time = create_datetime(units_att, 'days since %Y-%m-%d')
    end if
 
    call wrap_nf_get_var_double (ncidsstin, lonidin, lonin)
@@ -490,8 +494,8 @@ subroutine pcmdi_regrid(sstfilein, icefilein, gridout, fileout)
          ! date info from time variable
          itime = nint (time)
       else
-         ! date info from date variable
-         call wrap_nf_get_vara_int (ncidsstin, dateidin, n, 1, itime)
+        curr_time = base_time + timedelta(days=time)
+        itime = curr_time%year * 10000 + curr_time%month * 100 + curr_time%day
       end if
       if (bdate <= itime .and. edate >= itime) then
          if (verbose) then

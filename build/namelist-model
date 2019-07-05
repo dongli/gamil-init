@@ -9,6 +9,7 @@ uvtq_data_type                      = 2
 topo_data_file                      = "../data/ETOPO1_Ice_g_gmt4.grd"
 !ozone_data_file                     = "N/A"
 !aero_data_file                      = "N/A"
-!sst_data_file                       = "../data/sst.nc"
-!ice_data_file                       = "../data/ice.nc"
+sst_data_file                       = "../data/tosbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-4_gn_187001-201712.nc"
+ice_data_file                       = "../data/siconcbcs_input4MIPs_SSTsAndSeaIce_CMIP_PCMDI-AMIP-1-1-4_gn_187001-201712.nc"
+correct_sst_sice                    = .false.
 /

@@ -1,4 +1,5 @@
 .DS_Store
+data
 *.pdf
 *.nc
 build/*.o
@@ -7,3 +8,4 @@ build/CMake*
 build/Makefile
 build/cmake*
 build/gamil-init
+build/lib

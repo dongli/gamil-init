@@ -1,6 +1,7 @@
 module source_data
 
     use utils
+    use namelist_mod
     use variable
 
     implicit none
@@ -9,7 +10,6 @@ module source_data
     ! u, v, t, q data set
     integer, parameter :: era_interim = 1
     integer, parameter :: model_data  = 2
-    integer :: uvtq_data_type = -1
     integer num_data_lon, num_data_lat, num_data_lev
     real(8), allocatable :: data_lon(:)
     real(8), allocatable :: data_lat(:)

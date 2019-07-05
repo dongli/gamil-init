@@ -1,19 +1,12 @@
 module model_grids
 
     use utils
+    use namelist_mod
     use variable
     use io_manager
 
     implicit none
 
-    integer, parameter :: equal_interval_grid = 1
-    integer, parameter :: even_area_grid = 2
-
-    ! Control parameters
-    integer :: model_grid_type = even_area_grid
-    real(8) :: latmesh_B = 2
-
-    integer num_model_lon, num_model_lat
     integer num_model_lev
 
     integer model_2d_dims(2), model_3d_dims(3)
