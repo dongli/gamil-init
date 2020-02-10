@@ -13,6 +13,14 @@ topography, resolution, etc.
 Usage
 =====
 
+* Get the codes
+
+```
+$ git clone https://github.com/dongli/gamil-init
+$ cd gamil-init
+$ git submodule update --init
+```
+
 * Compile the codes
 
 Use `CMake` to generate `Makefile`. Note use `gfortran` since the codes contain
