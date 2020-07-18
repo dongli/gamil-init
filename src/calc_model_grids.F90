@@ -118,7 +118,7 @@ subroutine calc_model_grids(NX, NY, B)
                 YTHU(J+1) = AS-S1-PI/3.0D0+PI*0.5D0
                 WTGU(J+1)=1.0D0
             ELSE
-                YTHU(J+1)=(U1-DSQRT(1.0D0-(AS-S2)*A2))*DA+PI*0.5D0
+                YTHU(J+1)=(U1-DSQRT(1.0D0-MIN(1.0D0, (AS-S2)*A2)))*DA+PI*0.5D0
                 WTGU(J+1)=1.0D0-A*(DABS(YTHU(J+1)-PI*0.5D0)-PI/3.0D0)
             END IF
             AS = DY*(DFLOAT(J)+0.5D0)
@@ -129,7 +129,7 @@ subroutine calc_model_grids(NX, NY, B)
                 YTHV(J+1) = AS-S1-PI/3.0+PI*0.5
                 WTGV(J+1) = 1.0D0
             ELSE IF (J.LT.M1) THEN
-                YTHV(J+1)=(U1-DSQRT(1.0D0-(AS-S2)*A2))*DA+PI*0.5D0
+                YTHV(J+1)=(U1-DSQRT(1.0D0-MIN(1.0D0, (AS-S2)*A2)))*DA+PI*0.5D0
                 WTGV(J+1)=1.0D0-A*(DABS(YTHV(J+1)-PI*0.5D0)-PI/3.0D0)
             END IF
         END DO
