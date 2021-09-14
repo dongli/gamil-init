@@ -92,8 +92,8 @@ subroutine calc_model_grids(NX, NY, B)
             model_lat(j) = -PI*0.5+DY*(j-1)
             model_lat_bnds(j) = model_lat(j) - DY * 0.5d0
         end do
-        model_lat_bnds(1) = -90.0d0
-        model_lat_bnds(NY+1) = 90.0d0
+        model_lat_bnds(1) = -PI * 0.5d0
+        model_lat_bnds(NY+1) = PI * 0.5d0
         model_lat = model_lat*Rad2Deg
         model_lat_bnds = model_lat_bnds*Rad2Deg
     else if (model_grid_type == even_area_grid) then
